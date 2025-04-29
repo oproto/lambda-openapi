@@ -1,0 +1,93 @@
+Here are several recommendations before open-sourcing these projects:
+
+Documentation
+
+Add a comprehensive README.md file explaining:
+
+Project purpose and features
+
+Installation instructions
+
+Usage examples
+
+Contribution guidelines
+
+Add XML documentation comments to public APIs where missing
+
+Include a LICENSE file (choose an appropriate open source license)
+
+Code Quality
+
+Ensure consistent code formatting
+
+Add .editorconfig file to maintain coding standards
+
+Consider adding code analysis rules (via .NET analyzers)
+
+Review and remove any sensitive information or internal references
+
+Build and CI/CD
+
+Add GitHub Actions or similar CI/CD workflow files
+
+Include build scripts
+
+Add status badges for build status, code coverage, etc.
+
+Testing
+
+Based on the test files shown, you already have unit tests, which is good
+
+Consider adding more test coverage if needed
+
+Add code coverage reporting
+
+Document testing approach
+
+Package Management
+
+Ensure all NuGet package references are appropriate for open source
+
+Review package versions for security vulnerabilities
+
+Consider setting up automated dependency updates (e.g., Dependabot)
+
+Security
+
+Add SECURITY.md file with security policy
+
+Review code for any hardcoded secrets or credentials
+
+Add appropriate security scanning tools
+
+Project Structure
+
+Consider adding:
+
+CONTRIBUTING.md
+
+CODE_OF_CONDUCT.md
+
+CHANGELOG.md
+
+.gitignore file appropriate for .NET projects
+
+Specific to Your Code
+
+Review the OpenApiSchemaImporter.cs for any organization-specific logic that should be generalized
+
+Consider if the ExtensionMethods.cs targeting .NET Standard 2.0 is still necessary, or if you could upgrade to a newer target framework
+
+Review test dependencies and mocks (NSubstitute) to ensure they're appropriate for open source
+
+Versioning
+
+Implement proper semantic versioning
+
+Document version compatibility matrix if needed
+
+Examples
+
+Add example projects or documentation showing how to use the libraries
+
+Include common use cases and best practices
