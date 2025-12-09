@@ -57,8 +57,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" PrivateAssets="all"/>
-    <PackageReference Include="Microsoft.OpenApi" Version="1.6.22" PrivateAssets="all" GeneratePathProperty="true"/>
-    <PackageReference Include="System.Text.Json" Version="8.0.0"/>
+    <PackageReference Include="Microsoft.OpenApi" Version="3.0.2" PrivateAssets="all" GeneratePathProperty="true"/>
+    <PackageReference Include="System.Text.Json" Version="10.0.1"/>
   </ItemGroup>
 
   <!-- Copy Microsoft.OpenApi.dll to output for project reference scenarios -->
