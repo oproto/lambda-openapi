@@ -1,0 +1,46 @@
+<Project>
+  <PropertyGroup>
+    <!-- Version Management -->
+    <VersionPrefix>0.0.0</VersionPrefix>
+    <VersionSuffix>dev</VersionSuffix>
+    <!-- CI/CD can override these: dotnet build /p:VersionPrefix=1.0.0 /p:VersionSuffix=beta1 -->
+    
+    <!-- Common properties for all projects -->
+    <LangVersion>12</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <WarningsNotAsErrors>NU1701;NU1702;NU1903</WarningsNotAsErrors>
+    
+    <!-- Package properties -->
+    <Authors>Oproto Inc</Authors>
+    <Company>Oproto Inc</Company>
+    <Product>Oproto Lambda OpenAPI Generator</Product>
+    <Copyright>Copyright © 2025 Oproto Inc</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/oproto/lambda-openapi</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/oproto/lambda-openapi</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>openapi;swagger;aws;lambda;source-generator;api-documentation</PackageTags>
+    
+    <!-- Package Icon -->
+    <PackageIcon>icon.png</PackageIcon>
+    
+    <!-- Source Link -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    
+    <!-- Deterministic builds -->
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!-- Package Icon - conditionally included if file exists -->
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)docs/assets/icon.png')">
+    <None Include="$(MSBuildThisFileDirectory)docs/assets/icon.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
+  </ItemGroup>
+</Project>

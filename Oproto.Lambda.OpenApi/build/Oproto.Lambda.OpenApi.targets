@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <TasksAssemblyPath>$(MSBuildThisFileDirectory)Oproto.Lambda.OpenApi.Build.dll</TasksAssemblyPath>
+  </PropertyGroup>
+
+  <UsingTask TaskName="Oproto.Lambda.OpenApi.Build.ExtractOpenApiSpecTask"
+             AssemblyFile="$(TasksAssemblyPath)"/>
+
+  <Target Name="GenerateOpenApi" AfterTargets="Build">
+    <Message Text="Starting OpenAPI Generation" Importance="high"/>
+    <ExtractOpenApiSpecTask
+      AssemblyPath="$(TargetDir)$(TargetFileName)"
+      OutputPath="$(ProjectDir)openapi.json"/>
+  </Target>
+</Project>

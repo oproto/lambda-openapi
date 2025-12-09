@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi.Tests", "Oproto.Lambda.OpenApi.Tests\Oproto.Lambda.OpenApi.Tests.csproj", "{71774200-B7DE-458A-8FA2-4C00EC74A11E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi.Build", "Oproto.Lambda.OpenApi.Build\Oproto.Lambda.OpenApi.Build.csproj", "{543302A3-296E-4A9D-94D8-FDBC8C0E9587}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi.SourceGenerator", "Oproto.Lambda.OpenApi.SourceGenerator\Oproto.Lambda.OpenApi.SourceGenerator.csproj", "{7575B473-28DD-42E1-922B-85EB222A5F87}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi", "Oproto.Lambda.OpenApi\Oproto.Lambda.OpenApi.csproj", "{8DB8DA45-24B1-4E70-BA38-0C62502FEDA3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{71774200-B7DE-458A-8FA2-4C00EC74A11E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{71774200-B7DE-458A-8FA2-4C00EC74A11E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{71774200-B7DE-458A-8FA2-4C00EC74A11E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{71774200-B7DE-458A-8FA2-4C00EC74A11E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{543302A3-296E-4A9D-94D8-FDBC8C0E9587}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{543302A3-296E-4A9D-94D8-FDBC8C0E9587}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{543302A3-296E-4A9D-94D8-FDBC8C0E9587}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{543302A3-296E-4A9D-94D8-FDBC8C0E9587}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7575B473-28DD-42E1-922B-85EB222A5F87}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7575B473-28DD-42E1-922B-85EB222A5F87}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7575B473-28DD-42E1-922B-85EB222A5F87}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7575B473-28DD-42E1-922B-85EB222A5F87}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8DB8DA45-24B1-4E70-BA38-0C62502FEDA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8DB8DA45-24B1-4E70-BA38-0C62502FEDA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8DB8DA45-24B1-4E70-BA38-0C62502FEDA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8DB8DA45-24B1-4E70-BA38-0C62502FEDA3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

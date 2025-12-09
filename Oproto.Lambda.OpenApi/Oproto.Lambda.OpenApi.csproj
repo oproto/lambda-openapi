@@ -1,0 +1,56 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    
+    <!-- Package Metadata -->
+    <PackageId>Oproto.Lambda.OpenApi</PackageId>
+    <Title>Oproto Lambda OpenAPI</Title>
+    <Description>OpenAPI specification generation for AWS Lambda functions. Includes attributes, source generator, and MSBuild task for automatic OpenAPI document generation.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>Initial public release with rebranded package names</PackageReleaseNotes>
+    
+    <!-- Documentation -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    
+    <!-- This package bundles the source generator and build task -->
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- Bundle the source generator -->
+  <ItemGroup>
+    <None Include="..\Oproto.Lambda.OpenApi.SourceGenerator\bin\$(Configuration)\netstandard2.0\Oproto.Lambda.OpenApi.SourceGenerator.dll" 
+          Pack="true" 
+          PackagePath="analyzers\dotnet\cs" 
+          Visible="false" 
+          Condition="Exists('..\Oproto.Lambda.OpenApi.SourceGenerator\bin\$(Configuration)\netstandard2.0\Oproto.Lambda.OpenApi.SourceGenerator.dll')" />
+    <None Include="..\Oproto.Lambda.OpenApi.SourceGenerator\bin\$(Configuration)\netstandard2.0\Microsoft.OpenApi.dll" 
+          Pack="true" 
+          PackagePath="analyzers\dotnet\cs" 
+          Visible="false" 
+          Condition="Exists('..\Oproto.Lambda.OpenApi.SourceGenerator\bin\$(Configuration)\netstandard2.0\Microsoft.OpenApi.dll')" />
+  </ItemGroup>
+
+  <!-- Bundle the build task -->
+  <ItemGroup>
+    <None Include="..\Oproto.Lambda.OpenApi.Build\bin\$(Configuration)\netstandard2.0\Oproto.Lambda.OpenApi.Build.dll" 
+          Pack="true" 
+          PackagePath="build" 
+          Visible="false" 
+          Condition="Exists('..\Oproto.Lambda.OpenApi.Build\bin\$(Configuration)\netstandard2.0\Oproto.Lambda.OpenApi.Build.dll')" />
+  </ItemGroup>
+
+  <!-- Include build props and targets -->
+  <ItemGroup>
+    <None Include="build\Oproto.Lambda.OpenApi.props" Pack="true" PackagePath="build" Condition="Exists('build\Oproto.Lambda.OpenApi.props')" />
+    <None Include="build\Oproto.Lambda.OpenApi.targets" Pack="true" PackagePath="build" Condition="Exists('build\Oproto.Lambda.OpenApi.targets')" />
+  </ItemGroup>
+
+</Project>

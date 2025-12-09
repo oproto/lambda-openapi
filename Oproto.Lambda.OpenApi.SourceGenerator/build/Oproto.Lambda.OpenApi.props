@@ -1,0 +1,31 @@
+<Project>
+  <PropertyGroup>
+    <OpenApiGeneratorTasksPath>$(MSBuildThisFileDirectory)</OpenApiGeneratorTasksPath>
+  </PropertyGroup>
+
+  <!-- Update to use the source generator -->
+  <ItemGroup>
+    <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="OpenApiGenerator"/>
+    <Analyzer Include="$(MSBuildThisFileDirectory)..\analyzers\dotnet\cs\Oproto.Lambda.OpenApi.SourceGenerator.dll"/>
+  </ItemGroup>
+
+  <!-- Reference required assemblies -->
+  <ItemGroup>
+    <Reference Include="Oproto.Lambda.OpenApi">
+      <HintPath>$(MSBuildThisFileDirectory)..\lib\netstandard2.0\Oproto.Lambda.OpenApi.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\lib\netstandard2.0\Oproto.Lambda.OpenApi.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Visible="false"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Oproto.Lambda.OpenApi">
+      <HintPath>$(MSBuildThisFileDirectory)Oproto.Lambda.OpenApi.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
