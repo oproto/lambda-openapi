@@ -1,0 +1,134 @@
+# Implementation Plan
+
+- [x] 1. Create Examples Project Structure
+  - [x] 1.1 Create Oproto.Lambda.OpenApi.Examples project
+    - Create project directory and csproj file targeting .NET 8.0
+    - Add package references for Amazon.Lambda.Annotations, Amazon.Lambda.APIGatewayEvents, Amazon.Lambda.Core, Amazon.Lambda.Serialization.SystemTextJson
+    - Add project reference to Oproto.Lambda.OpenApi
+    - _Requirements: 1.1, 1.2, 1.3_
+  - [x] 1.2 Add project to solution file
+    - Update Oproto.Lambda.OpenApi.sln to include the examples project
+    - _Requirements: 1.1_
+  - [x] 1.3 Create directory structure
+    - Create Functions/ and Models/ folders
+    - _Requirements: 1.1_
+
+- [x] 2. Implement Model Classes
+  - [x] 2.1 Create Product model class
+    - Implement Product.cs with Id, Name, Price, Category properties
+    - Add OpenApiSchema attributes with Description, Format, MinLength, MaxLength, Minimum constraints
+    - Add OpenApiIgnore attribute on InternalCreatedAt property
+    - Add XML documentation comments
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
+  - [x] 2.2 Create CreateProductRequest model class
+    - Implement CreateProductRequest.cs with Name, Price, Category properties
+    - Add OpenApiSchema attributes with validation constraints and Example values
+    - Add XML documentation comments
+    - _Requirements: 3.1, 3.2, 3.4_
+  - [x] 2.3 Create UpdateProductRequest model class
+    - Implement UpdateProductRequest.cs with optional Name, Price, Category properties
+    - Add OpenApiSchema attributes with validation constraints
+    - Add XML documentation comments
+    - _Requirements: 3.1, 3.2, 3.4_
+
+- [x] 3. Implement Lambda Functions
+  - [x] 3.1 Create ProductFunctions class with GenerateOpenApiSpec attribute
+    - Create Functions/ProductFunctions.cs
+    - Add GenerateOpenApiSpec attribute with service name and version
+    - Add LambdaSerializer assembly attribute
+    - _Requirements: 2.1, 2.6, 2.7_
+  - [x] 3.2 Implement GetProducts (list) operation
+    - Add LambdaFunction and HttpApi attributes for GET /products
+    - Add OpenApiOperation with summary and description
+    - Add OpenApiTag for grouping
+    - Implement with FromQuery parameters (limit, category)
+    - _Requirements: 2.1, 2.2, 2.6, 2.7_
+  - [x] 3.3 Implement GetProduct (by ID) operation
+    - Add LambdaFunction and HttpApi attributes for GET /products/{id}
+    - Add OpenApiOperation with summary and description
+    - Add OpenApiTag for grouping
+    - Implement with FromRoute parameter (id)
+    - _Requirements: 2.1, 2.2, 2.6, 2.7_
+  - [x] 3.4 Implement CreateProduct operation
+    - Add LambdaFunction and HttpApi attributes for POST /products
+    - Add OpenApiOperation with summary and description
+    - Add OpenApiTag for grouping
+    - Implement with FromBody parameter (CreateProductRequest)
+    - _Requirements: 2.1, 2.3, 2.6, 2.7_
+  - [x] 3.5 Implement UpdateProduct operation
+    - Add LambdaFunction and HttpApi attributes for PUT /products/{id}
+    - Add OpenApiOperation with summary and description
+    - Add OpenApiTag for grouping
+    - Implement with FromRoute (id) and FromBody (UpdateProductRequest) parameters
+    - _Requirements: 2.1, 2.4, 2.6, 2.7_
+  - [x] 3.6 Implement DeleteProduct operation
+    - Add LambdaFunction and HttpApi attributes for DELETE /products/{id}
+    - Add OpenApiOperation with summary and description
+    - Add OpenApiTag for grouping
+    - Implement with FromRoute parameter (id)
+    - _Requirements: 2.1, 2.5, 2.6, 2.7_
+
+- [x] 4. Checkpoint - Verify examples project builds
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 5. Create Attribute Reference Documentation
+  - [x] 5.1 Create docs/attributes.md with overview section
+    - Add document title and introduction
+    - Add table of contents linking to each attribute section
+    - _Requirements: 4.1_
+  - [x] 5.2 Document GenerateOpenApiSpecAttribute
+    - Describe purpose, target types (Class), and constructor parameters
+    - Include usage example
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+  - [x] 5.3 Document OpenApiOperationAttribute
+    - Describe purpose, target types (Method), and all properties (Summary, Description, Deprecated)
+    - Include usage example
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+  - [x] 5.4 Document OpenApiTagAttribute
+    - Describe purpose, target types (Class, Method, Parameter, Property), and constructor parameters
+    - Include usage example
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+  - [x] 5.5 Document OpenApiSchemaAttribute
+    - Describe purpose, target types (Property, Parameter), and all properties
+    - Include usage examples for different validation scenarios
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+  - [x] 5.6 Document OpenApiIgnoreAttribute
+    - Describe purpose, target types (Parameter, Property)
+    - Include usage example
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+  - [x] 5.7 Document OpenApiOutputAttribute
+    - Describe purpose, target types (Assembly), and constructor parameters
+    - Include usage example
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+
+- [x] 6. Create Configuration Documentation
+  - [x] 6.1 Create docs/configuration.md with overview
+    - Add document title and introduction explaining configuration options
+    - _Requirements: 5.1_
+  - [x] 6.2 Document MSBuild properties
+    - Explain available MSBuild properties for customization
+    - Include examples of setting properties in csproj
+    - _Requirements: 5.1_
+  - [x] 6.3 Document output path configuration
+    - Explain how to customize the openapi.json output location
+    - Include example configuration
+    - _Requirements: 5.2_
+  - [x] 6.4 Document disabling automatic generation
+    - Explain how to disable OpenAPI generation for specific builds
+    - Include example configuration
+    - _Requirements: 5.3_
+  - [x] 6.5 Add troubleshooting section
+    - Document common issues and solutions
+    - Include guidance for debugging generation problems
+    - _Requirements: 5.4_
+
+- [x] 7. Update Documentation Cross-References
+  - [x] 7.1 Update getting-started.md links
+    - Update link to attributes.md to use correct relative path
+    - Update link to configuration.md to use correct relative path
+    - Update link to examples to point to examples project
+    - _Requirements: 6.1, 6.2, 6.3_
+
+- [x] 8. Final Checkpoint - Verify build and documentation
+  - Ensure all tests pass, ask the user if questions arise.
+

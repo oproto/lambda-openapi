@@ -84,4 +84,4 @@ All attributes are located in the `Oproto.Lambda.OpenApi.Attributes` namespace:
 
 - [Attribute Reference](attributes.md) - Complete attribute documentation
 - [Configuration Options](configuration.md) - Advanced configuration
-- [Examples](../examples/) - More complex examples
+- [Examples](../Oproto.Lambda.OpenApi.Examples/) - Working example project with CRUD operations

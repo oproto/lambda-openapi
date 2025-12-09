@@ -61,6 +61,13 @@
     <PackageReference Include="System.Text.Json" Version="8.0.0"/>
   </ItemGroup>
 
+  <!-- Copy Microsoft.OpenApi.dll to output for project reference scenarios -->
+  <Target Name="CopyOpenApiDependency" AfterTargets="Build">
+    <Copy SourceFiles="$(PkgMicrosoft_OpenApi)\lib\netstandard2.0\Microsoft.OpenApi.dll"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
   <ItemGroup>
     <!-- Package the generator -->
     <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true"

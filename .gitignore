@@ -55,3 +55,8 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+
+# Example project generated files
+Oproto.Lambda.OpenApi.Examples/openapi.json
+Oproto.Lambda.OpenApi.Examples/serverless.template
