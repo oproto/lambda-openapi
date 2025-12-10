@@ -476,8 +476,11 @@ public class OpenApiGeneratorTests
     }
 
     [Fact]
-    public void GenerateOpenApiDocument_WithSecurity_GeneratesSecuritySchemes()
+    public void GenerateOpenApiDocument_WithSecurity_GeneratesSecurityRequirements()
     {
+        // This test verifies that security requirements are added to operations
+        // when RequiresApiKey is true. Security scheme definitions are now only
+        // added when assembly-level OpenApiSecuritySchemeAttribute is present.
         var endpoint = new EndpointInfo
         {
             HttpMethod = "GET",
@@ -499,26 +502,7 @@ public class OpenApiGeneratorTests
         // Get the operation
         var operation = document.Paths["/secure"].Operations[OperationType.Get];
 
-        // Debug the security requirements in detail
-        Console.WriteLine("\nDetailed Security Requirements:");
-        foreach (var securityRequirement in operation.Security)
-        foreach (var (scheme, scopes) in securityRequirement)
-        {
-            Console.WriteLine($"Scheme Reference: {scheme.Reference?.Id ?? "null"}");
-            if (scheme.Reference != null)
-            {
-                var referencedScheme2 = document.Components.SecuritySchemes[scheme.Reference.Id];
-                Console.WriteLine($"Referenced Scheme Type: {referencedScheme2.Type}");
-                Console.WriteLine($"Referenced Scheme In: {referencedScheme2.In}");
-                Console.WriteLine($"Referenced Scheme Name: {referencedScheme2.Name}");
-            }
-        }
-
-        // Verify the security scheme exists
-        Assert.NotNull(document.Components.SecuritySchemes);
-        Assert.True(document.Components.SecuritySchemes.ContainsKey("apiKey"));
-
-        // Get the first security requirement
+        // Verify security requirements are added to the operation
         Assert.NotNull(operation.Security);
         Assert.NotEmpty(operation.Security);
 
@@ -530,11 +514,13 @@ public class OpenApiGeneratorTests
         Assert.NotNull(securityScheme.Reference);
         Assert.Equal("apiKey", securityScheme.Reference.Id);
 
-        // Verify the referenced scheme is correct
-        var referencedScheme = document.Components.SecuritySchemes["apiKey"];
-        Assert.Equal(SecuritySchemeType.ApiKey, referencedScheme.Type);
-        Assert.Equal(ParameterLocation.Header, referencedScheme.In);
-        Assert.Equal("x-api-key", referencedScheme.Name);
+        // Security scheme definitions are only added when assembly-level
+        // OpenApiSecuritySchemeAttribute is present. Without the attribute,
+        // no security schemes are defined in Components.
+        Assert.True(
+            document.Components.SecuritySchemes == null || 
+            document.Components.SecuritySchemes.Count == 0,
+            "Security schemes should not be defined without OpenApiSecuritySchemeAttribute");
     }
 
 

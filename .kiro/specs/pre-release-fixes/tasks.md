@@ -1,0 +1,160 @@
+# Implementation Plan
+
+- [x] 1. Fix Task<T> Return Type Unwrapping
+  - [x] 1.1 Add UnwrapAsyncType method to OpenApiSpecGenerator
+    - Create method that detects Task<T>, ValueTask<T>, Task, ValueTask
+    - Return inner type T for generic variants, null for non-generic
+    - Handle nested async types (Task<Task<T>> edge case)
+    - _Requirements: 1.1, 1.2, 1.3, 1.4_
+  - [x] 1.2 Update CreateResponses to use unwrapped type
+    - Call UnwrapAsyncType on endpoint.ReturnType before creating schema
+    - Handle null return (void/Task) by omitting response content
+    - _Requirements: 1.1, 1.2_
+  - [x] 1.3 Write property test for Task<T> unwrapping
+    - **Property 1: Task<T> Unwrapping Preserves Inner Type**
+    - **Validates: Requirements 1.1, 1.3, 1.4**
+  - [x] 1.4 Write unit tests for Task unwrapping edge cases
+    - Test Task<string>, Task<ComplexType>, Task (non-generic), ValueTask<T>
+    - _Requirements: 1.1, 1.2, 1.3, 1.4_
+
+- [x] 2. Remove Debug Output from Production Code
+  - [x] 2.1 Remove all Console.WriteLine from source generator
+    - Remove from OpenApiSpecGenerator_Security.cs (8 occurrences)
+    - Remove from OpenApiSpecGenerator_Attributes.cs (2 occurrences)
+    - _Requirements: 2.1_
+  - [x] 2.2 Evaluate and wrap Debug.WriteLine statements
+    - Review each Debug.WriteLine for diagnostic value
+    - Wrap valuable ones in #if DEBUG preprocessor directives
+    - Remove redundant/noisy debug statements
+    - _Requirements: 2.2, 2.3, 2.4_
+
+- [x] 3. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 4. Fix Package Version Alignment
+  - [x] 4.1 Remove hardcoded version from SourceGenerator.csproj
+    - Delete `<Version>1.0.0</Version>` line
+    - Verify version comes from Directory.Build.props
+    - _Requirements: 3.1, 3.2_
+  - [x] 4.2 Write test to verify version alignment
+    - Build solution and verify all .nupkg files have same version
+    - _Requirements: 3.3_
+
+- [x] 5. Implement Security Scheme Attributes
+  - [x] 5.1 Create OpenApiSecuritySchemeAttribute
+    - Add new attribute class with SchemeId, Type, ApiKeyName, ApiKeyLocation, AuthorizationUrl, TokenUrl, Scopes properties
+    - Add OpenApiSecuritySchemeType and ApiKeyLocation enums (renamed to avoid conflict with Microsoft.OpenApi)
+    - _Requirements: 4.1, 4.4, 4.5_
+  - [x] 5.2 Update source generator to read security scheme attributes
+    - Read assembly-level OpenApiSecuritySchemeAttribute instances
+    - Replace hardcoded security definitions with attribute-based configuration
+    - Handle multiple security schemes
+    - _Requirements: 4.1, 4.2, 4.3_
+  - [x] 5.3 Update AddSecurityDefinitions to use attribute configuration
+    - Only add security schemes when attributes are present
+    - Map attribute properties to OpenApiSecurityScheme
+    - _Requirements: 4.2, 4.3_
+  - [ ] 5.4 Write property test for security scheme configuration
+    - **Property 2: Security Scheme Attribute Round-Trip**
+    - **Validates: Requirements 4.1, 4.3, 4.4, 4.5**
+  - [ ] 5.5 Write unit tests for security scheme scenarios
+    - Test no attributes, single API key, single OAuth2, multiple schemes
+    - _Requirements: 4.1, 4.2, 4.3_
+
+- [x] 6. Update Dependency Versions
+  - [x] 6.1 Update Microsoft.Build.Utilities.Core in Build project
+    - Kept at 17.8.3 - vulnerability affects all versions and is build-time only
+    - Packages marked as PrivateAssets="all" so not exposed to consumers
+    - _Requirements: 5.2_
+  - [x] 6.2 Update System.Text.Json in SourceGenerator project
+    - Updated to version 8.0.5 (fixes GHSA-8g4q-xg66-9fp4 and GHSA-hh2w-p6rv-4g7w)
+    - _Requirements: 5.1, 5.3_
+
+- [x] 7. Add Missing HTTP Method Support
+  - [x] 7.1 Update GenerateOpenApiDocument switch statement
+    - Added cases for PATCH, HEAD, OPTIONS
+    - Map to OperationType.Patch, OperationType.Head, OperationType.Options
+    - _Requirements: 6.1, 6.2, 6.3_
+  - [ ] 7.2 Write property test for HTTP method mapping
+    - **Property 4: HTTP Method Mapping Completeness**
+    - **Validates: Requirements 6.1, 6.2, 6.3**
+  - [ ] 7.3 Write unit tests for PATCH, HEAD, OPTIONS methods
+    - Test each method generates correct OpenAPI operation key
+    - _Requirements: 6.1, 6.2, 6.3_
+
+- [x] 8. Checkpoint - Ensure all tests pass
+  - All 42 tests pass.
+
+- [x] 9. Remove Dead Code
+  - [ ] 9.1 Remove GenerateOpenApiSpecAttribute
+    - Skipped: Used in tests and examples, would require significant refactoring
+    - _Requirements: 7.1_
+  - [x] 9.2 Remove unused ResponseTypeInfo and ExampleInfo
+    - Deleted ResponseTypeInfo.cs
+    - Deleted ExampleInfo.cs
+    - Removed ResponseTypes property from EndpointInfo
+    - Removed Examples property from DocumentationInfo
+    - _Requirements: 7.2, 7.3_
+  - [x] 9.3 Remove unused methods from OpenApiSpecGenerator
+    - Removed GetLambdaClassInfo method
+    - Removed GetApiInfo method
+    - _Requirements: 7.4, 7.5_
+
+- [x] 10. Implement AOT-Compatible Extraction
+  - [x] 10.1 Add source file parsing to ExtractOpenApiSpecTask
+    - Added FindGeneratedSourceFile method to locate .g.cs file
+    - Added ExtractJsonFromSourceFile method with regex parsing
+    - Handles escaped quotes in JSON string (verbatim string "" -> ")
+    - _Requirements: 11.1, 11.2, 11.4_
+  - [x] 10.2 Update Execute method with dual extraction strategy
+    - Tries source file parsing first (AOT-compatible)
+    - Falls back to reflection if source file not found
+    - Logs warning with EmitCompilerGeneratedFiles instructions when no spec found
+    - _Requirements: 11.1, 11.3, 11.5_
+  - [ ] 10.3 Write property test for JSON extraction from source file
+    - **Property 3: Generated Source File JSON Extraction**
+    - **Validates: Requirements 11.2, 11.4**
+  - [ ] 10.4 Write unit tests for extraction scenarios
+    - Test extraction from valid .g.cs file
+    - Test fallback to reflection
+    - Test error handling when both methods fail
+    - _Requirements: 11.1, 11.2, 11.3, 11.5_
+
+- [x] 11. Checkpoint - Ensure all tests pass
+  - All 42 tests pass.
+
+- [x] 12. Update Documentation
+  - [x] 12.1 Update getting-started.md
+    - Added section explaining FromServices parameters are excluded
+    - Added section explaining x-amazon-apigateway-integration extension
+    - Added section on AOT compatibility with EmitCompilerGeneratedFiles
+    - Added section on security schemes
+    - _Requirements: 8.1, 8.2, 10.1, 10.2, 11.6_
+  - [x] 12.2 Update attributes.md
+    - Added documentation for new OpenApiSecuritySchemeAttribute
+    - Kept GenerateOpenApiSpecAttribute (still used in examples)
+    - _Requirements: 4.1, 7.1_
+  - [x] 12.3 Update configuration.md
+    - Added AOT configuration section
+    - Documented EmitCompilerGeneratedFiles requirement for AOT
+    - _Requirements: 10.3, 11.6_
+  - [x] 12.4 Create DOCUMENTATION_CHANGELOG.md
+    - Created docs/DOCUMENTATION_CHANGELOG.md for tracking documentation-specific changes
+    - Lists all changes to attributes.md, getting-started.md, and configuration.md
+    - _Requirements: 8.3_
+  - [x] 12.5 Update CHANGELOG.md
+    - Added all changes for this release
+    - Follows Keep a Changelog format
+    - _Requirements: 8.4_
+
+- [x] 13. Rebuild and Verify Examples
+  - [x] 13.1 Rebuild Examples project
+    - Verified openapi.json no longer contains Task wrapper types
+    - Verified security schemes are not present (no attributes defined)
+    - _Requirements: 1.1, 4.2_
+  - [x] 13.2 Update example openapi.json in repository
+    - Updated with corrected generated output
+    - _Requirements: 1.1_
+
+- [x] 14. Final Checkpoint - Ensure all tests pass
+  - All 42 tests pass.

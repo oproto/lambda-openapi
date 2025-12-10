@@ -11,7 +11,6 @@ public class EndpointInfo
     public List<ParameterInfo> Parameters { get; set; }
     public ApiType ApiType { get; set; }
     public DocumentationInfo Documentation { get; set; }
-    public List<ResponseTypeInfo> ResponseTypes { get; set; } = new();
     public ITypeSymbol ReturnType { get; set; }
     public IMethodSymbol MethodSymbol { get; set; }
     public List<string> SecuritySchemes { get; set; } = new();

@@ -47,8 +47,8 @@ public class CompilerHelper
                 .Location),
             MetadataReference.CreateFromFile(typeof(LambdaHttpMethod).Assembly
                 .Location),
-            // Add reference to the assembly containing GenerateOpenApiSpecAttribute
-            MetadataReference.CreateFromFile(typeof(GenerateOpenApiSpecAttribute).Assembly.Location),
+            // Add reference to the assembly containing OpenApiInfoAttribute
+            MetadataReference.CreateFromFile(typeof(OpenApiInfoAttribute).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(OpenApiSpecGenerator).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(OpenApiOutputAttribute).Assembly.Location)
         };

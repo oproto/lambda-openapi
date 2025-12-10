@@ -8,31 +8,9 @@
     <!-- Analyzer specific settings -->
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 
-    <!-- Package settings -->
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.0.0</Version>
-    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <!-- Not packaged separately - bundled into Oproto.Lambda.OpenApi package -->
+    <IsPackable>false</IsPackable>
     <IsRoslynComponent>true</IsRoslynComponent>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <DevelopmentDependency>true</DevelopmentDependency>
-    <NoPackageAnalysis>true</NoPackageAnalysis>
-    
-    <!-- Package Metadata -->
-    <PackageId>Oproto.Lambda.OpenApi.SourceGenerator</PackageId>
-    <Title>Oproto Lambda OpenAPI Source Generator</Title>
-    <Description>Source generator that creates OpenAPI specifications from AWS Lambda functions with Lambda Annotations</Description>
-    <Authors>Oproto Inc</Authors>
-    <Company>Oproto Inc</Company>
-    <Product>Oproto Lambda OpenAPI Source Generator</Product>
-    <Copyright>Copyright © 2025 Oproto Inc</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/oproto/lambda-openapi</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/oproto/lambda-openapi</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageTags>openapi;swagger;aws;lambda;source-generator;api-documentation;roslyn</PackageTags>
-
-    <PackageReleaseNotes>Initial public release</PackageReleaseNotes>
     
     <!-- Documentation - disabled as this is an internal component -->
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
@@ -58,7 +36,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" PrivateAssets="all"/>
     <PackageReference Include="Microsoft.OpenApi" Version="1.6.22" PrivateAssets="all" GeneratePathProperty="true"/>
-    <PackageReference Include="System.Text.Json" Version="8.0.0"/>
+    <PackageReference Include="System.Text.Json" Version="8.0.5"/>
   </ItemGroup>
 
   <!-- Copy Microsoft.OpenApi.dll to output for project reference scenarios -->
@@ -68,27 +46,4 @@
           SkipUnchangedFiles="true" />
   </Target>
 
-  <ItemGroup>
-    <!-- Package the generator -->
-    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true"
-          PackagePath="analyzers/dotnet/cs" Visible="false"/>
-
-    <!-- Package dependencies -->
-    <None Include="$(PkgMicrosoft_OpenApi)\lib\netstandard2.0\*.dll" Pack="true"
-          PackagePath="analyzers/dotnet/cs" Visible="false"/>
-
-    <!-- Package the Tasks -->
-    <None Include="$(OutputPath)\Oproto.Lambda.OpenApi.Build.dll" Pack="true"
-          PackagePath="build" Visible="false"/>
-
-    <!-- Package Oproto.Lambda.OpenApi -->
-    <None Include="$(OutputPath)\Oproto.Lambda.OpenApi.dll" Pack="true"
-          PackagePath="build;lib/netstandard2.0" Visible="false"/>
-
-    <!-- Include the props and targets files -->
-    <None Include="build\**\*.props" Pack="true"
-          PackagePath="build"/>
-    <None Include="build\**\*.targets" Pack="true"
-          PackagePath="build"/>
-  </ItemGroup>
 </Project>

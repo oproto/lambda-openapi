@@ -6,6 +6,7 @@ using Oproto.Lambda.OpenApi.Attributes;
 using Examples.Models;
 
 [assembly: LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
+[assembly: OpenApiInfo("Products API", "1.0", Description = "API for managing products in the catalog")]
 
 namespace Examples.Functions;
 
@@ -13,7 +14,6 @@ namespace Examples.Functions;
 /// Lambda functions for managing products in the catalog.
 /// Demonstrates CRUD operations with OpenAPI documentation attributes.
 /// </summary>
-[GenerateOpenApiSpec("Products API", "1.0")]
 public class ProductFunctions
 {
     /// <summary>

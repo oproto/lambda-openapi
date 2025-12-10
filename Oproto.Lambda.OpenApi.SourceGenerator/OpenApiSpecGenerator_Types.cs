@@ -254,8 +254,6 @@ public partial class OpenApiSpecGenerator
     private bool IsCollectionType(ITypeSymbol typeSymbol, out ITypeSymbol elementType)
     {
         elementType = null;
-        Debug.WriteLine($"Checking type: {typeSymbol.ToDisplayString()}");
-        Debug.WriteLine($"Kind: {typeSymbol.TypeKind}");
 
         // Handle array types
         if (typeSymbol is IArrayTypeSymbol arrayType)
@@ -267,9 +265,6 @@ public partial class OpenApiSpecGenerator
         // Handle generic collections
         if (typeSymbol is INamedTypeSymbol namedType && namedType.IsGenericType)
         {
-            Debug.WriteLine($"MetadataName: {namedType.MetadataName}");
-            Debug.WriteLine($"Is Generic: {namedType.IsGenericType}");
-            Debug.WriteLine("Interfaces:");
 
             // Direct type checks first
             // Todo: is there a better way to do this?

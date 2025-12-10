@@ -1,0 +1,2086 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "ledgers": {
+      "post": {
+        "tags": [
+          "Default"
+        ],
+        "summary": "POST CreateLedger",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "Ledger": {
+                    "type": "object",
+                    "properties": {
+                      "LedgerId": {
+                        "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                        "type": "string",
+                        "format": "ulid"
+                      },
+                      "ParentLedgerId": {
+                        "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                        "type": "string",
+                        "format": "ulid",
+                        "nullable": true
+                      },
+                      "LedgerName": {
+                        "type": "string",
+                        "example": "sample string"
+                      },
+                      "Description": {
+                        "type": "string",
+                        "example": "sample string"
+                      },
+                      "LedgerType": {
+                        "type": "string",
+                        "example": "sample string"
+                      },
+                      "IsActive": {
+                        "type": "boolean",
+                        "nullable": true,
+                        "example": true
+                      },
+                      "FiscalYear": {
+                        "type": "object",
+                        "properties": {
+                          "FiscalYearConfigId": {
+                            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                            "type": "string",
+                            "format": "ulid"
+                          },
+                          "StartMonth": {
+                            "type": "integer",
+                            "example": 42
+                          },
+                          "StartDay": {
+                            "type": "integer",
+                            "example": 42
+                          }
+                        }
+                      },
+                      "LastClosedDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                      },
+                      "CreatedDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                      },
+                      "UpdatedDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                      },
+                      "CreatedBy": {
+                        "type": "string",
+                        "example": "sample string"
+                      },
+                      "UpdatedBy": {
+                        "type": "string",
+                        "example": "sample string"
+                      },
+                      "Tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "example": "sample string"
+                        }
+                      },
+                      "CostCenter": {
+                        "type": "string",
+                        "example": "sample string"
+                      },
+                      "Department": {
+                        "type": "string",
+                        "example": "sample string"
+                      },
+                      "Project": {
+                        "type": "string",
+                        "example": "sample string"
+                      },
+                      "IsSystemProvided": {
+                        "type": "boolean",
+                        "nullable": true,
+                        "example": true
+                      },
+                      "SumTo": {
+                        "type": "number",
+                        "format": "decimal",
+                        "example": 123.45
+                      },
+                      "SumFrom": {
+                        "type": "number",
+                        "format": "decimal",
+                        "example": 123.45
+                      },
+                      "SumUpdated": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "${LambdaFunctionArn}",
+          "payloadFormatVersion": "1.0"
+        }
+      }
+    },
+    "ledgers/{id}": {
+      "put": {
+        "tags": [
+          "Default"
+        ],
+        "summary": "PUT UpdateLedger",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "LedgerId": {
+                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                    "type": "string",
+                    "format": "ulid"
+                  },
+                  "LedgerName": {
+                    "type": "string",
+                    "example": "sample string"
+                  },
+                  "Description": {
+                    "type": "string",
+                    "example": "sample string"
+                  },
+                  "IsActive": {
+                    "type": "boolean",
+                    "nullable": true,
+                    "example": true
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "${LambdaFunctionArn}",
+          "payloadFormatVersion": "1.0"
+        }
+      }
+    },
+    "ledgers/query": {
+      "post": {
+        "tags": [
+          "Default"
+        ],
+        "summary": "POST LedgerList",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "PageSize": {
+                    "type": "integer",
+                    "example": 42
+                  },
+                  "PaginationToken": {
+                    "type": "string",
+                    "example": "sample string"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "${LambdaFunctionArn}",
+          "payloadFormatVersion": "1.0"
+        }
+      }
+    },
+    "transactions/query": {
+      "post": {
+        "tags": [
+          "Default"
+        ],
+        "summary": "POST QueryTransactions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "LedgerId": {
+                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                    "type": "string",
+                    "format": "ulid"
+                  },
+                  "Ascending": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "RetrieveLatestStateOnly": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "Range": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/DateRange"
+                      }
+                    ],
+                    "nullable": true
+                  },
+                  "PageSize": {
+                    "type": "integer",
+                    "example": 42
+                  },
+                  "PaginationToken": {
+                    "type": "string",
+                    "example": "sample string"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "${LambdaFunctionArn}",
+          "payloadFormatVersion": "1.0"
+        }
+      }
+    },
+    "transactions/{id}": {
+      "get": {
+        "tags": [
+          "Default"
+        ],
+        "summary": "GET GetTransaction",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "${LambdaFunctionArn}",
+          "payloadFormatVersion": "1.0"
+        }
+      },
+      "delete": {
+        "tags": [
+          "Default"
+        ],
+        "summary": "DELETE DeleteDraftTransaction",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "${LambdaFunctionArn}",
+          "payloadFormatVersion": "1.0"
+        }
+      }
+    },
+    "transactions": {
+      "post": {
+        "tags": [
+          "Default"
+        ],
+        "summary": "POST CreateTransaction",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "TransactionDate": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "CreateAsDraft": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "SourceDocumentId": {
+                    "type": "string",
+                    "example": "sample string"
+                  },
+                  "SourceDocumentType": {
+                    "type": "string",
+                    "example": "sample string"
+                  },
+                  "LedgerEntries": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "LedgerId": {
+                          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                          "type": "string",
+                          "format": "ulid"
+                        },
+                        "LineItemId": {
+                          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                          "type": "string",
+                          "format": "ulid",
+                          "nullable": true
+                        },
+                        "To": {
+                          "type": "number",
+                          "format": "decimal",
+                          "example": 123.45
+                        },
+                        "From": {
+                          "type": "number",
+                          "format": "decimal",
+                          "example": 123.45
+                        }
+                      }
+                    }
+                  },
+                  "Metadata": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "example": "sample string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "${LambdaFunctionArn}",
+          "payloadFormatVersion": "1.0"
+        }
+      },
+      "put": {
+        "tags": [
+          "Default"
+        ],
+        "summary": "PUT UpdateDraftTransaction",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "TransactionId": {
+                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                    "type": "string",
+                    "format": "ulid"
+                  },
+                  "LedgerEntries": {
+                    "type": "array",
+                    "items": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/TransactionLedgerEntryInput"
+                        }
+                      ],
+                      "nullable": true
+                    }
+                  },
+                  "SourceDocumentId": {
+                    "type": "string",
+                    "example": "sample string"
+                  },
+                  "SourceDocumentType": {
+                    "type": "string",
+                    "example": "sample string"
+                  },
+                  "Metadata": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "example": "sample string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "${LambdaFunctionArn}",
+          "payloadFormatVersion": "1.0"
+        }
+      }
+    },
+    "transactions/correct": {
+      "post": {
+        "tags": [
+          "Default"
+        ],
+        "summary": "POST CreateCorrectionTransaction",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "TransactionToCorrectId": {
+                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                    "type": "string",
+                    "format": "ulid"
+                  },
+                  "LedgerEntries": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/TransactionLedgerEntryInput"
+                    }
+                  },
+                  "Reason": {
+                    "type": "string",
+                    "example": "sample string"
+                  },
+                  "Metadata": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "example": "sample string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "${LambdaFunctionArn}",
+          "payloadFormatVersion": "1.0"
+        }
+      }
+    },
+    "transactions/reverse": {
+      "post": {
+        "tags": [
+          "Default"
+        ],
+        "summary": "POST CreateReversalTransaction",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "TransactionToReverseId": {
+                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                    "type": "string",
+                    "format": "ulid"
+                  },
+                  "Reason": {
+                    "type": "string",
+                    "example": "sample string"
+                  },
+                  "Metadata": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "example": "sample string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "${LambdaFunctionArn}",
+          "payloadFormatVersion": "1.0"
+        }
+      }
+    },
+    "transactions/commit": {
+      "post": {
+        "tags": [
+          "Default"
+        ],
+        "summary": "POST CommitDraftTransaction",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "TransactionId": {
+                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                    "type": "string",
+                    "format": "ulid"
+                  },
+                  "Metadata": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "example": "sample string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "${LambdaFunctionArn}",
+          "payloadFormatVersion": "1.0"
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "FiscalYearConfig": {
+        "type": "object",
+        "properties": {
+          "FiscalYearConfigId": {
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string",
+            "format": "ulid"
+          },
+          "StartMonth": {
+            "type": "integer",
+            "example": 42
+          },
+          "StartDay": {
+            "type": "integer",
+            "example": 42
+          }
+        }
+      },
+      "Ledger": {
+        "type": "object",
+        "properties": {
+          "LedgerId": {
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string",
+            "format": "ulid"
+          },
+          "ParentLedgerId": {
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string",
+            "format": "ulid",
+            "nullable": true
+          },
+          "LedgerName": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "Description": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "LedgerType": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "IsActive": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "FiscalYear": {
+            "type": "object",
+            "properties": {
+              "FiscalYearConfigId": {
+                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string",
+                "format": "ulid"
+              },
+              "StartMonth": {
+                "type": "integer",
+                "example": 42
+              },
+              "StartDay": {
+                "type": "integer",
+                "example": 42
+              }
+            }
+          },
+          "LastClosedDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "CreatedDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "UpdatedDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "CreatedBy": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "UpdatedBy": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "Tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "sample string"
+            }
+          },
+          "CostCenter": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "Department": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "Project": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "IsSystemProvided": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          },
+          "SumTo": {
+            "type": "number",
+            "format": "decimal",
+            "example": 123.45
+          },
+          "SumFrom": {
+            "type": "number",
+            "format": "decimal",
+            "example": 123.45
+          },
+          "SumUpdated": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateLedgerCommand": {
+        "type": "object",
+        "properties": {
+          "Ledger": {
+            "type": "object",
+            "properties": {
+              "LedgerId": {
+                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string",
+                "format": "ulid"
+              },
+              "ParentLedgerId": {
+                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string",
+                "format": "ulid",
+                "nullable": true
+              },
+              "LedgerName": {
+                "type": "string",
+                "example": "sample string"
+              },
+              "Description": {
+                "type": "string",
+                "example": "sample string"
+              },
+              "LedgerType": {
+                "type": "string",
+                "example": "sample string"
+              },
+              "IsActive": {
+                "type": "boolean",
+                "nullable": true,
+                "example": true
+              },
+              "FiscalYear": {
+                "type": "object",
+                "properties": {
+                  "FiscalYearConfigId": {
+                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                    "type": "string",
+                    "format": "ulid"
+                  },
+                  "StartMonth": {
+                    "type": "integer",
+                    "example": 42
+                  },
+                  "StartDay": {
+                    "type": "integer",
+                    "example": 42
+                  }
+                }
+              },
+              "LastClosedDate": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "CreatedDate": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "UpdatedDate": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "CreatedBy": {
+                "type": "string",
+                "example": "sample string"
+              },
+              "UpdatedBy": {
+                "type": "string",
+                "example": "sample string"
+              },
+              "Tags": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "example": "sample string"
+                }
+              },
+              "CostCenter": {
+                "type": "string",
+                "example": "sample string"
+              },
+              "Department": {
+                "type": "string",
+                "example": "sample string"
+              },
+              "Project": {
+                "type": "string",
+                "example": "sample string"
+              },
+              "IsSystemProvided": {
+                "type": "boolean",
+                "nullable": true,
+                "example": true
+              },
+              "SumTo": {
+                "type": "number",
+                "format": "decimal",
+                "example": 123.45
+              },
+              "SumFrom": {
+                "type": "number",
+                "format": "decimal",
+                "example": 123.45
+              },
+              "SumUpdated": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "UpdateLedgerCommand": {
+        "type": "object",
+        "properties": {
+          "LedgerId": {
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string",
+            "format": "ulid"
+          },
+          "LedgerName": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "Description": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "IsActive": {
+            "type": "boolean",
+            "nullable": true,
+            "example": true
+          }
+        }
+      },
+      "GetLedgersForTenantQuery": {
+        "type": "object",
+        "properties": {
+          "PageSize": {
+            "type": "integer",
+            "example": 42
+          },
+          "PaginationToken": {
+            "type": "string",
+            "example": "sample string"
+          }
+        }
+      },
+      "TimeSpan": {
+        "type": "object",
+        "properties": {
+          "Days": {
+            "type": "integer",
+            "example": 42
+          },
+          "Hours": {
+            "type": "integer",
+            "example": 42
+          },
+          "Microseconds": {
+            "type": "integer",
+            "example": 42
+          },
+          "Milliseconds": {
+            "type": "integer",
+            "example": 42
+          },
+          "Minutes": {
+            "type": "integer",
+            "example": 42
+          },
+          "Nanoseconds": {
+            "type": "integer",
+            "example": 42
+          },
+          "Seconds": {
+            "type": "integer",
+            "example": 42
+          },
+          "Ticks": {
+            "type": "integer",
+            "format": "int64",
+            "example": 9999999999
+          },
+          "TotalDays": {
+            "type": "number",
+            "format": "double",
+            "example": 3.14159
+          },
+          "TotalHours": {
+            "type": "number",
+            "format": "double",
+            "example": 3.14159
+          },
+          "TotalMicroseconds": {
+            "type": "number",
+            "format": "double",
+            "example": 3.14159
+          },
+          "TotalMilliseconds": {
+            "type": "number",
+            "format": "double",
+            "example": 3.14159
+          },
+          "TotalMinutes": {
+            "type": "number",
+            "format": "double",
+            "example": 3.14159
+          },
+          "TotalNanoseconds": {
+            "type": "number",
+            "format": "double",
+            "example": 3.14159
+          },
+          "TotalSeconds": {
+            "type": "number",
+            "format": "double",
+            "example": 3.14159
+          }
+        }
+      },
+      "DateRange": {
+        "type": "object",
+        "properties": {
+          "Start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "End": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "Duration": {
+            "type": "object",
+            "properties": {
+              "Days": {
+                "type": "integer",
+                "example": 42
+              },
+              "Hours": {
+                "type": "integer",
+                "example": 42
+              },
+              "Microseconds": {
+                "type": "integer",
+                "example": 42
+              },
+              "Milliseconds": {
+                "type": "integer",
+                "example": 42
+              },
+              "Minutes": {
+                "type": "integer",
+                "example": 42
+              },
+              "Nanoseconds": {
+                "type": "integer",
+                "example": 42
+              },
+              "Seconds": {
+                "type": "integer",
+                "example": 42
+              },
+              "Ticks": {
+                "type": "integer",
+                "format": "int64",
+                "example": 9999999999
+              },
+              "TotalDays": {
+                "type": "number",
+                "format": "double",
+                "example": 3.14159
+              },
+              "TotalHours": {
+                "type": "number",
+                "format": "double",
+                "example": 3.14159
+              },
+              "TotalMicroseconds": {
+                "type": "number",
+                "format": "double",
+                "example": 3.14159
+              },
+              "TotalMilliseconds": {
+                "type": "number",
+                "format": "double",
+                "example": 3.14159
+              },
+              "TotalMinutes": {
+                "type": "number",
+                "format": "double",
+                "example": 3.14159
+              },
+              "TotalNanoseconds": {
+                "type": "number",
+                "format": "double",
+                "example": 3.14159
+              },
+              "TotalSeconds": {
+                "type": "number",
+                "format": "double",
+                "example": 3.14159
+              }
+            }
+          },
+          "MaxRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DateRange"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "GetTransactionsForLedgerQuery": {
+        "type": "object",
+        "properties": {
+          "LedgerId": {
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string",
+            "format": "ulid"
+          },
+          "Ascending": {
+            "type": "boolean",
+            "example": true
+          },
+          "RetrieveLatestStateOnly": {
+            "type": "boolean",
+            "example": true
+          },
+          "Range": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DateRange"
+              }
+            ],
+            "nullable": true
+          },
+          "PageSize": {
+            "type": "integer",
+            "example": 42
+          },
+          "PaginationToken": {
+            "type": "string",
+            "example": "sample string"
+          }
+        }
+      },
+      "TransactionLedgerEntryInput": {
+        "type": "object",
+        "properties": {
+          "LedgerId": {
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string",
+            "format": "ulid"
+          },
+          "LineItemId": {
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string",
+            "format": "ulid",
+            "nullable": true
+          },
+          "To": {
+            "type": "number",
+            "format": "decimal",
+            "example": 123.45
+          },
+          "From": {
+            "type": "number",
+            "format": "decimal",
+            "example": 123.45
+          }
+        }
+      },
+      "CreateTransactionCommand": {
+        "type": "object",
+        "properties": {
+          "TransactionDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "CreateAsDraft": {
+            "type": "boolean",
+            "example": true
+          },
+          "SourceDocumentId": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "SourceDocumentType": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "LedgerEntries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "LedgerId": {
+                  "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string",
+                  "format": "ulid"
+                },
+                "LineItemId": {
+                  "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string",
+                  "format": "ulid",
+                  "nullable": true
+                },
+                "To": {
+                  "type": "number",
+                  "format": "decimal",
+                  "example": 123.45
+                },
+                "From": {
+                  "type": "number",
+                  "format": "decimal",
+                  "example": 123.45
+                }
+              }
+            }
+          },
+          "Metadata": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "sample string"
+            }
+          }
+        }
+      },
+      "UpdateDraftTransactionCommand": {
+        "type": "object",
+        "properties": {
+          "TransactionId": {
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string",
+            "format": "ulid"
+          },
+          "LedgerEntries": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/TransactionLedgerEntryInput"
+                }
+              ],
+              "nullable": true
+            }
+          },
+          "SourceDocumentId": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "SourceDocumentType": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "Metadata": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "sample string"
+            }
+          }
+        }
+      },
+      "CreateCorrectionTransactionCommand": {
+        "type": "object",
+        "properties": {
+          "TransactionToCorrectId": {
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string",
+            "format": "ulid"
+          },
+          "LedgerEntries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionLedgerEntryInput"
+            }
+          },
+          "Reason": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "Metadata": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "sample string"
+            }
+          }
+        }
+      },
+      "CreateReversalTransactionCommand": {
+        "type": "object",
+        "properties": {
+          "TransactionToReverseId": {
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string",
+            "format": "ulid"
+          },
+          "Reason": {
+            "type": "string",
+            "example": "sample string"
+          },
+          "Metadata": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "sample string"
+            }
+          }
+        }
+      },
+      "CommitDraftTransactionCommand": {
+        "type": "object",
+        "properties": {
+          "TransactionId": {
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string",
+            "format": "ulid"
+          },
+          "Metadata": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "sample string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

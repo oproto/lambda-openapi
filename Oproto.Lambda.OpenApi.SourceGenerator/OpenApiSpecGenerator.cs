@@ -57,12 +57,12 @@ public partial class OpenApiSpecGenerator : IIncrementalGenerator
                 })
             .Where(tuple => tuple.classDecl != null);
 
-        // Create a value provider for collecting OpenAPI specs
+        // Create a value provider for collecting OpenAPI specs (includes compilation for later use)
         var openApiSpecs = methodDeclarations.Combine(compilationProvider)
             .Select((tuple, _) =>
             {
                 var (classInfo, compilation) = tuple;
-                return GenerateForClass(classInfo.classDecl!, classInfo.semanticModel!);
+                return (Doc: GenerateForClass(classInfo.classDecl!, classInfo.semanticModel!, compilation), Compilation: compilation);
             });
 
         // Register the final output that will merge and emit the attribute
@@ -73,8 +73,11 @@ public partial class OpenApiSpecGenerator : IIncrementalGenerator
                 if (!specs.Any())
                     return;
 
-                // Merge specs and generate final output
-                var mergedDoc = MergeOpenApiDocs(specs);
+                // Get compilation from first spec (all should have same compilation)
+                var compilation = specs.FirstOrDefault().Compilation;
+                
+                // Merge specs and apply assembly-level OpenApiInfo
+                var mergedDoc = MergeOpenApiDocs(specs.Select(s => s.Doc).ToImmutableArray(), compilation);
                 using var writer = new StringWriter();
                 mergedDoc.SerializeAsV3(new OpenApiJsonWriter(writer));
                 var mergedJson = writer.ToString();
@@ -91,8 +94,12 @@ using Oproto.Lambda.OpenApi.Attributes;
 
     private OpenApiDocument? GenerateForClass(
         ClassDeclarationSyntax classDecl,
-        SemanticModel semanticModel)
+        SemanticModel semanticModel,
+        Compilation compilation)
     {
+        // Store compilation for use in security definitions
+        _currentCompilation = compilation;
+        
         var endpoints = new List<EndpointInfo>();
 
         // Get all method declarations in the class
@@ -127,34 +134,40 @@ using Oproto.Lambda.OpenApi.Attributes;
 
             return openApiDoc;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Debug.WriteLine($"Exception details: {ex}");
-            Debug.WriteLine($"Exception trace: {ex.StackTrace}");
+            // Exception swallowed intentionally - source generators should not crash the build
         }
 
         return null;
     }
 
-    private OpenApiDocument MergeOpenApiDocs(ImmutableArray<OpenApiDocument> docs)
+    private OpenApiDocument MergeOpenApiDocs(ImmutableArray<OpenApiDocument?> docs, Compilation? compilation)
     {
         // Filter out nulls
         var validDocs = docs.Where(d => d != null).ToList();
+        
+        // Get API info from assembly-level attribute
+        var apiInfo = GetOpenApiInfoFromAssembly(compilation);
 
         if (!validDocs.Any())
             // Return a minimal valid OpenAPI document if no valid docs
             return new OpenApiDocument
             {
-                Info = new OpenApiInfo { Title = "API Documentation", Version = "1.0.0" },
+                Info = apiInfo,
                 Paths = new OpenApiPaths()
             };
 
         if (validDocs.Count == 1)
-            return validDocs[0];
+        {
+            validDocs[0]!.Info = apiInfo;
+            return validDocs[0]!;
+        }
 
         var mergedDoc = new OpenApiDocument
         {
-            Info = new OpenApiInfo { Title = "API Documentation", Version = "1.0.0" }, Paths = new OpenApiPaths()
+            Info = apiInfo, 
+            Paths = new OpenApiPaths()
         };
 
         foreach (var doc in validDocs)
@@ -182,6 +195,80 @@ using Oproto.Lambda.OpenApi.Attributes;
     }
 
     private static string EscapeString(string str) => str.Replace("\"", "\"\"");
+    
+    /// <summary>
+    /// Reads the [OpenApiInfo] attribute from the assembly to get API title, version, and other metadata.
+    /// </summary>
+    private OpenApiInfo GetOpenApiInfoFromAssembly(Compilation? compilation)
+    {
+        var info = new OpenApiInfo
+        {
+            Title = "API Documentation",
+            Version = "1.0.0"
+        };
+        
+        if (compilation == null)
+            return info;
+            
+        foreach (var attr in compilation.Assembly.GetAttributes())
+        {
+            if (attr.AttributeClass?.Name != "OpenApiInfoAttribute")
+                continue;
+                
+            // Constructor args: (string title, string version = "1.0.0")
+            if (attr.ConstructorArguments.Length > 0)
+                info.Title = attr.ConstructorArguments[0].Value as string ?? info.Title;
+            if (attr.ConstructorArguments.Length > 1)
+                info.Version = attr.ConstructorArguments[1].Value as string ?? info.Version;
+            
+            // Named arguments
+            foreach (var namedArg in attr.NamedArguments)
+            {
+                switch (namedArg.Key)
+                {
+                    case "Description":
+                        info.Description = namedArg.Value.Value as string;
+                        break;
+                    case "TermsOfService":
+                        var tosUrl = namedArg.Value.Value as string;
+                        if (!string.IsNullOrEmpty(tosUrl))
+                            info.TermsOfService = new Uri(tosUrl);
+                        break;
+                    case "ContactName":
+                    case "ContactEmail":
+                    case "ContactUrl":
+                        info.Contact ??= new OpenApiContact();
+                        if (namedArg.Key == "ContactName")
+                            info.Contact.Name = namedArg.Value.Value as string;
+                        else if (namedArg.Key == "ContactEmail")
+                            info.Contact.Email = namedArg.Value.Value as string;
+                        else if (namedArg.Key == "ContactUrl")
+                        {
+                            var contactUrl = namedArg.Value.Value as string;
+                            if (!string.IsNullOrEmpty(contactUrl))
+                                info.Contact.Url = new Uri(contactUrl);
+                        }
+                        break;
+                    case "LicenseName":
+                    case "LicenseUrl":
+                        info.License ??= new OpenApiLicense();
+                        if (namedArg.Key == "LicenseName")
+                            info.License.Name = namedArg.Value.Value as string;
+                        else if (namedArg.Key == "LicenseUrl")
+                        {
+                            var licenseUrl = namedArg.Value.Value as string;
+                            if (!string.IsNullOrEmpty(licenseUrl))
+                                info.License.Url = new Uri(licenseUrl);
+                        }
+                        break;
+                }
+            }
+            
+            break; // Only process first OpenApiInfo attribute
+        }
+        
+        return info;
+    }
 
     private EndpointInfo? ExtractEndpointInfo(
         MethodDeclarationSyntax methodDecl,
@@ -226,7 +313,6 @@ using Oproto.Lambda.OpenApi.Attributes;
                 {
                     var methodName = memberAccess.Name.Identifier.Text;
                     httpMethod = ConvertHttpMethod(methodName);
-                    Debug.WriteLine($"Found HTTP method from enum: {methodName} -> {httpMethod}");
                 }
 
                 route = ExtractStringValue(args[1].Expression);
@@ -254,11 +340,6 @@ using Oproto.Lambda.OpenApi.Attributes;
         // If we couldn't extract the required information, return null
         if (httpMethod == null || route == null)
             return null;
-
-        Debug.WriteLine("Extracted method info:");
-        Debug.WriteLine($"  HTTP Method: {httpMethod}");
-        Debug.WriteLine($"  Route: {route}");
-        Debug.WriteLine($"  API Type: {apiType}");
 
         // Create endpoint info
         var endpoint = new EndpointInfo
@@ -378,6 +459,48 @@ using Oproto.Lambda.OpenApi.Attributes;
         return false;
     }
 
+    /// <summary>
+    /// Unwraps async return types (Task&lt;T&gt;, ValueTask&lt;T&gt;) to expose the inner type T.
+    /// </summary>
+    /// <param name="typeSymbol">The type symbol to unwrap.</param>
+    /// <returns>
+    /// The inner type T for Task&lt;T&gt; or ValueTask&lt;T&gt;,
+    /// null for non-generic Task or ValueTask (indicating void/no content),
+    /// or the original type if not an async wrapper.
+    /// </returns>
+    private ITypeSymbol? UnwrapAsyncType(ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol == null)
+            return null;
+            
+        if (typeSymbol is INamedTypeSymbol namedType && namedType.IsGenericType)
+        {
+            // Check the original definition's name to identify Task<T> or ValueTask<T>
+            var originalDef = namedType.OriginalDefinition;
+            var fullName = originalDef.ToDisplayString();
+            
+            // Check for Task<T> or ValueTask<T>
+            if (fullName == "System.Threading.Tasks.Task<TResult>" ||
+                fullName == "System.Threading.Tasks.ValueTask<TResult>")
+            {
+                var innerType = namedType.TypeArguments[0];
+                
+                // Handle nested async types (Task<Task<T>> edge case)
+                return UnwrapAsyncType(innerType) ?? innerType;
+            }
+        }
+        
+        // Check for non-generic Task/ValueTask
+        var displayName = typeSymbol.ToDisplayString();
+        if (displayName == "System.Threading.Tasks.Task" ||
+            displayName == "System.Threading.Tasks.ValueTask")
+        {
+            return null; // Indicates void/no content
+        }
+        
+        return typeSymbol;
+    }
+
 
     private bool HasLambdaAttribute(ClassDeclarationSyntax classDecl, SemanticModel semanticModel,
         IncrementalGeneratorInitializationContext context)
@@ -450,6 +573,15 @@ using Oproto.Lambda.OpenApi.Attributes;
                 case "DELETE":
                     path.Operations[OperationType.Delete] = operation;
                     break;
+                case "PATCH":
+                    path.Operations[OperationType.Patch] = operation;
+                    break;
+                case "HEAD":
+                    path.Operations[OperationType.Head] = operation;
+                    break;
+                case "OPTIONS":
+                    path.Operations[OperationType.Options] = operation;
+                    break;
             }
 
             // Add or merge the path into the document
@@ -463,130 +595,6 @@ using Oproto.Lambda.OpenApi.Attributes;
         }
 
         return document;
-    }
-
-
-    private (string method, string route, ApiType apiType)? GetApiInfo(ISymbol methodSymbol)
-    {
-        // Check for HttpApi attribute
-        var httpAttribute = methodSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "HttpApiAttribute");
-
-        if (httpAttribute != null)
-            return (
-                httpAttribute.ConstructorArguments[0].Value?.ToString() ?? "GET",
-                httpAttribute.ConstructorArguments[1].Value?.ToString() ?? "/",
-                ApiType.Http
-            );
-
-        // Check for RestApi attribute
-        var restAttribute = methodSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "RestApiAttribute");
-
-        if (restAttribute != null)
-            return (
-                restAttribute.ConstructorArguments[0].Value?.ToString() ?? "GET",
-                restAttribute.ConstructorArguments[1].Value?.ToString() ?? "/",
-                ApiType.Rest
-            );
-
-        return null;
-    }
-
-    private LambdaClassInfo? GetLambdaClassInfo(GeneratorSyntaxContext context)
-    {
-        // Only process class declarations
-        if (context.Node is not ClassDeclarationSyntax classDeclaration)
-        {
-            Debug.WriteLine("Not a class declaration");
-            return null;
-        }
-
-        // Get the semantic model
-        var semanticModel = context.SemanticModel;
-        var classSymbol = ModelExtensions.GetDeclaredSymbol(semanticModel, classDeclaration);
-
-        if (classSymbol == null)
-        {
-            Debug.WriteLine("Could not get class symbol");
-            return null;
-        }
-
-        Debug.WriteLine($"Processing class: {classSymbol.Name}");
-
-        // Find methods with [LambdaFunction] attribute
-        var methods = classDeclaration.Members
-            .OfType<MethodDeclarationSyntax>()
-            .ToList();
-
-        Debug.WriteLine($"Found {methods.Count} methods");
-
-        var methodsWithAttributes = methods
-            .Select(method => new
-            {
-                Method = method, Symbol = ModelExtensions.GetDeclaredSymbol(semanticModel, method) as IMethodSymbol
-            })
-            .Where(m => m.Symbol != null)
-            .ToList();
-
-        Debug.WriteLine($"Found {methodsWithAttributes.Count} methods with symbols");
-
-        foreach (var m in methodsWithAttributes)
-        {
-            var attrs = m.Symbol!.GetAttributes().ToList();
-            Debug.WriteLine($"Method {m.Method.Identifier.Text} has {attrs.Count} attributes:");
-            foreach (var attr in attrs) Debug.WriteLine($"  - {attr.AttributeClass?.Name}");
-        }
-
-        var lambdaMethods = methodsWithAttributes
-            .Where(m => m.Symbol!.GetAttributes()
-                .Any(a => a.AttributeClass?.Name == "LambdaFunctionAttribute"))
-            .ToList();
-
-        Debug.WriteLine($"Found {lambdaMethods.Count} Lambda methods");
-
-        if (!lambdaMethods.Any())
-        {
-            Debug.WriteLine("No Lambda methods found, returning null");
-            return null;
-        }
-
-        var endpoints = lambdaMethods
-            .Select(m =>
-            {
-                var apiInfo = GetApiInfo(m.Symbol!);
-                if (apiInfo == null)
-                {
-                    Debug.WriteLine($"No API info found for method {m.Method.Identifier.Text}");
-                    return null;
-                }
-
-                Debug.WriteLine($"Creating endpoint info for {m.Method.Identifier.Text}");
-                return new EndpointInfo
-                {
-                    MethodName = m.Method.Identifier.Text,
-                    HttpMethod = apiInfo.Value.method,
-                    Route = apiInfo.Value.route,
-                    Parameters = GetParameters(m.Symbol!),
-                    ApiType = apiInfo.Value.apiType,
-                    ReturnType = m.Symbol!.ReturnType,
-                    MethodSymbol = m.Symbol,
-                    SecuritySchemes = new List<string>(),
-                    RequiresAuthorization = false
-                };
-            })
-            .Where(e => e != null)
-            .Select(e => e!)
-            .ToList();
-
-        if (!endpoints.Any())
-        {
-            Debug.WriteLine("No endpoints created, returning null");
-            return null;
-        }
-
-        Debug.WriteLine($"Created {endpoints.Count} endpoints");
-        return new LambdaClassInfo { ServiceName = classSymbol.Name, Endpoints = endpoints };
     }
 
 
@@ -736,15 +744,124 @@ using Oproto.Lambda.OpenApi.Attributes;
 
     private OpenApiResponses CreateResponses(EndpointInfo endpoint)
     {
-        var responses = new OpenApiResponses { ["200"] = CreateResponse(200, endpoint.ReturnType) };
+        var responses = new OpenApiResponses();
+        
+        // Check for [OpenApiResponseType] attributes first
+        var responseTypeAttributes = GetOpenApiResponseTypeAttributes(endpoint.MethodSymbol);
+        
+        if (responseTypeAttributes.Any())
+        {
+            // Use explicit response type attributes
+            foreach (var (statusCode, responseType, description) in responseTypeAttributes)
+            {
+                var response = new OpenApiResponse 
+                { 
+                    Description = description ?? GetResponseDescription(statusCode) 
+                };
+                
+                if (responseType != null)
+                {
+                    response.Content = new Dictionary<string, OpenApiMediaType>
+                    {
+                        ["application/json"] = new() { Schema = CreateSchema(responseType) }
+                    };
+                }
+                
+                responses[statusCode.ToString()] = response;
+            }
+        }
+        else
+        {
+            // Unwrap async return types (Task<T>, ValueTask<T>) to get the actual response type
+            var unwrappedReturnType = UnwrapAsyncType(endpoint.ReturnType);
+            
+            // Check if return type is IHttpResult or IResult (Lambda Annotations types)
+            // These are infrastructure types that don't represent the actual response body
+            var isHttpResultType = IsHttpResultType(unwrappedReturnType);
+            
+            if (unwrappedReturnType == null || isHttpResultType)
+            {
+                // No response body - use 204 No Content for void, or 200 with no schema for IHttpResult
+                if (unwrappedReturnType == null)
+                {
+                    responses["204"] = CreateResponse(204);
+                }
+                else
+                {
+                    // IHttpResult - we don't know the actual response type, so omit the schema
+                    responses["200"] = CreateResponse(200);
+                }
+            }
+            else
+            {
+                responses["200"] = CreateResponse(200, unwrappedReturnType);
+            }
+        }
 
-        // Add error responses
-        responses["400"] = CreateResponse(400);
-        responses["401"] = CreateResponse(401);
-        responses["403"] = CreateResponse(403);
-        responses["500"] = CreateResponse(500);
+        // Add error responses if not already specified
+        if (!responses.ContainsKey("400"))
+            responses["400"] = CreateResponse(400);
+        if (!responses.ContainsKey("401"))
+            responses["401"] = CreateResponse(401);
+        if (!responses.ContainsKey("403"))
+            responses["403"] = CreateResponse(403);
+        if (!responses.ContainsKey("500"))
+            responses["500"] = CreateResponse(500);
 
         return responses;
+    }
+    
+    /// <summary>
+    /// Checks if the type is IHttpResult, IResult, or similar Lambda Annotations result types.
+    /// </summary>
+    private bool IsHttpResultType(ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol == null)
+            return false;
+            
+        var typeName = typeSymbol.ToDisplayString();
+        
+        // Check for common Lambda Annotations result types
+        return typeName.Contains("IHttpResult") ||
+               typeName.Contains("Amazon.Lambda.Annotations.APIGateway.IHttpResult") ||
+               typeName == "Amazon.Lambda.Annotations.APIGateway.HttpResults";
+    }
+    
+    /// <summary>
+    /// Extracts [OpenApiResponseType] attributes from a method.
+    /// </summary>
+    private List<(int StatusCode, ITypeSymbol? ResponseType, string? Description)> GetOpenApiResponseTypeAttributes(IMethodSymbol? methodSymbol)
+    {
+        var results = new List<(int, ITypeSymbol?, string?)>();
+        
+        if (methodSymbol == null)
+            return results;
+            
+        foreach (var attr in methodSymbol.GetAttributes())
+        {
+            if (attr.AttributeClass?.Name != "OpenApiResponseTypeAttribute")
+                continue;
+                
+            // Constructor args: (Type responseType, int statusCode = 200)
+            var responseType = attr.ConstructorArguments.Length > 0 
+                ? attr.ConstructorArguments[0].Value as ITypeSymbol 
+                : null;
+            var statusCode = attr.ConstructorArguments.Length > 1 
+                ? (int)(attr.ConstructorArguments[1].Value ?? 200) 
+                : 200;
+            
+            // Named argument: Description
+            string? description = null;
+            foreach (var namedArg in attr.NamedArguments)
+            {
+                if (namedArg.Key == "Description")
+                    description = namedArg.Value.Value as string;
+            }
+            
+            results.Add((statusCode, responseType, description));
+        }
+        
+        return results;
     }
 
     private OpenApiResponse CreateResponse(int statusCode, ITypeSymbol? returnType = null)

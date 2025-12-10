@@ -142,14 +142,7 @@ public partial class OpenApiSpecGenerator
 
     private bool HasAttribute(ISymbol symbol, string attributeName)
     {
-        var hasAttribute = symbol.GetAttributes()
+        return symbol.GetAttributes()
             .Any(a => a.AttributeClass?.Name == attributeName);
-
-        // Add debug logging
-        Console.WriteLine(
-            $"Checking {attributeName} on {symbol.Name}. Attributes present: {string.Join(", ", symbol.GetAttributes().Select(a => a.AttributeClass?.Name))}");
-        Console.WriteLine($"HasAttribute result: {hasAttribute}");
-
-        return hasAttribute;
     }
 }

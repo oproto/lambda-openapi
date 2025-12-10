@@ -3,6 +3,7 @@
 [![Build Status](https://github.com/oproto/lambda-openapi/workflows/Build%20and%20Test/badge.svg)](https://github.com/oproto/lambda-openapi/actions)
 [![NuGet](https://img.shields.io/nuget/v/Oproto.Lambda.OpenApi.svg)](https://www.nuget.org/packages/Oproto.Lambda.OpenApi/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Sponsor](https://img.shields.io/badge/Sponsor-❤-ea4aaa)](https://github.com/sponsors/dguisinger)
 
 A .NET source generator that automatically creates OpenAPI specifications from AWS Lambda functions decorated with Lambda Annotations.
 
@@ -13,6 +14,14 @@ A .NET source generator that automatically creates OpenAPI specifications from A
 - 🔧 **MSBuild Integration**: Seamless integration with your build process
 - 📝 **AWS Lambda Support**: Designed specifically for Lambda Annotations
 - 🎯 **Type-Safe**: Leverages C# type system for accurate schemas
+- ⚡ **AOT Compatible**: Works with Native AOT compilation
+
+## Requirements
+
+- .NET 6.0 or later (compatible with .NET 6, 7, 8, 9, 10+)
+- [AWS Lambda Annotations](https://github.com/aws/aws-lambda-dotnet/tree/master/Libraries/src/Amazon.Lambda.Annotations) package
+
+The library targets `netstandard2.0` for maximum compatibility.
 
 ## Installation
 
@@ -47,11 +56,16 @@ public async Task<APIGatewayProxyResponse> GetUser(
 - [Getting Started Guide](docs/getting-started.md)
 - [Attribute Reference](docs/attributes.md)
 - [Configuration Options](docs/configuration.md)
-- [Examples](examples/)
+- [Examples](Oproto.Lambda.OpenApi.Examples/)
+- [Changelog](CHANGELOG.md)
 
 ## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## Security
+
+To report a security vulnerability, please see our [Security Policy](SECURITY.md).
 
 ## License
 
@@ -75,3 +89,21 @@ Oproto Lambda OpenAPI is developed and maintained by Oproto.
 ### Maintainer
 
 This project is maintained by the Oproto team.
+
+## ❤️ Support the Project
+
+Oproto maintains this library as part of a broader open-source ecosystem for building high-quality AWS-native .NET applications. If Lambda OpenAPI (or any Oproto library) saves you time or helps your team ship features faster, please consider supporting ongoing development.
+
+Your support helps:
+- Fund continued maintenance of the Oproto Lambda ecosystem
+- Keep libraries AOT-compatible and aligned with new AWS features
+- Improve documentation, samples, and test coverage
+- Sustain long-term open-source availability
+
+You can support the project in one of two ways:
+
+**👉 [GitHub Sponsors](https://github.com/sponsors/dguisinger)** — Recurring support for those who want to help sustain long-term development.
+
+**👉 [Buy Me a Coffee](https://buymeacoffee.com/danguisinger)** — A simple, one-time "thanks" for helping you ship faster.
+
+Every bit of support helps keep the project healthy, actively maintained, and open for the community. Thank you!

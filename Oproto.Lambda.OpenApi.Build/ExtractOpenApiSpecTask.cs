@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 
@@ -12,6 +13,12 @@ public class ExtractOpenApiSpecTask : Task
     [Required] public string AssemblyPath { get; set; }
 
     [Required] public string OutputPath { get; set; }
+    
+    /// <summary>
+    /// Optional path to the intermediate output directory where generated files are stored.
+    /// Used for AOT-compatible extraction from source files.
+    /// </summary>
+    public string IntermediateOutputPath { get; set; }
 
     public override bool Execute()
     {
@@ -19,20 +26,30 @@ public class ExtractOpenApiSpecTask : Task
         {
             Log.LogMessage(MessageImportance.High, $"Loading assembly from: {AssemblyPath}");
 
+            // Validate assembly path exists
+            if (!File.Exists(AssemblyPath))
+            {
+                Log.LogError($"Assembly not found: {AssemblyPath}");
+                return false;
+            }
+
             // Validate OutputPath
             if (string.IsNullOrEmpty(Path.GetExtension(OutputPath)))
                 OutputPath = Path.Combine(OutputPath, "openapi.json");
 
-            var assembly = Assembly.LoadFrom(AssemblyPath);
-            var attributes = assembly.GetCustomAttributes();
-
-            // Find the attribute by name without using type comparison
-            var attribute = attributes
-                .FirstOrDefault(a => a.GetType().FullName == "Oproto.Lambda.OpenApi.Attributes.OpenApiOutputAttribute");
-
-            if (attribute == null)
+            // Strategy 1: Try parsing generated source file (AOT-compatible)
+            var json = TryExtractFromSourceFile();
+            
+            // Strategy 2: Fall back to reflection (non-AOT)
+            if (json == null)
             {
-                Log.LogWarning($"No OpenApiOutput attribute found in assembly: {AssemblyPath}");
+                json = TryExtractViaReflection();
+            }
+
+            if (json == null)
+            {
+                Log.LogWarning("No OpenAPI specification found. " +
+                    "For AOT builds, ensure EmitCompilerGeneratedFiles=true is set in your project.");
                 return true;
             }
 
@@ -41,7 +58,6 @@ public class ExtractOpenApiSpecTask : Task
             if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
 
             // Write the spec to file
-            var json = attribute.GetType().GetProperty("Specification")?.GetValue(attribute) as string;
             File.WriteAllText(OutputPath, json);
 
             Log.LogMessage(MessageImportance.Normal,
@@ -54,6 +70,147 @@ public class ExtractOpenApiSpecTask : Task
             Log.LogError($"Failed to extract or write OpenAPI specification: {ex.Message}");
             Log.LogMessage(MessageImportance.High, $"Stack trace: {ex.StackTrace}");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Attempts to extract the OpenAPI JSON from the generated source file.
+    /// This method is AOT-compatible as it doesn't require loading the assembly.
+    /// </summary>
+    private string TryExtractFromSourceFile()
+    {
+        var sourceFilePath = FindGeneratedSourceFile();
+        if (sourceFilePath == null || !File.Exists(sourceFilePath))
+        {
+            Log.LogMessage(MessageImportance.Low, 
+                "Generated source file not found. Will try reflection fallback.");
+            return null;
+        }
+
+        Log.LogMessage(MessageImportance.Normal, 
+            $"Found generated source file: {sourceFilePath}");
+
+        return ExtractJsonFromSourceFile(sourceFilePath);
+    }
+
+    /// <summary>
+    /// Finds the generated OpenApiOutput.g.cs file in the intermediate output directory.
+    /// </summary>
+    private string FindGeneratedSourceFile()
+    {
+        // Build possible paths to the generated file
+        var possiblePaths = new[]
+        {
+            // Standard path when EmitCompilerGeneratedFiles=true
+            GetGeneratedFilePath("Oproto.Lambda.OpenApi.SourceGenerator", 
+                "Oproto.Lambda.OpenApi.SourceGenerator.OpenApiSpecGenerator", 
+                "OpenApiOutput.g.cs"),
+            // Alternative path structure
+            GetGeneratedFilePath("Oproto.Lambda.OpenApi.SourceGenerator", 
+                "OpenApiSpecGenerator", 
+                "OpenApiOutput.g.cs"),
+        };
+
+        foreach (var path in possiblePaths)
+        {
+            if (path != null && File.Exists(path))
+            {
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    private string GetGeneratedFilePath(string generatorName, string generatorTypeName, string fileName)
+    {
+        if (string.IsNullOrEmpty(IntermediateOutputPath))
+        {
+            // Try to infer from AssemblyPath
+            var assemblyDir = Path.GetDirectoryName(AssemblyPath);
+            if (assemblyDir == null) return null;
+            
+            // Go up from bin/Debug/net8.0 to obj/Debug/net8.0
+            var projectDir = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(assemblyDir)));
+            if (projectDir == null) return null;
+            
+            var tfm = Path.GetFileName(assemblyDir);
+            var config = Path.GetFileName(Path.GetDirectoryName(assemblyDir));
+            IntermediateOutputPath = Path.Combine(projectDir, "obj", config, tfm);
+        }
+
+        return Path.Combine(IntermediateOutputPath, "generated", generatorName, generatorTypeName, fileName);
+    }
+
+    /// <summary>
+    /// Extracts the JSON string from the generated source file content.
+    /// The file contains: [assembly: OpenApiOutput(@"...", "openapi.json")]
+    /// </summary>
+    private string ExtractJsonFromSourceFile(string filePath)
+    {
+        try
+        {
+            var content = File.ReadAllText(filePath);
+            
+            // Match the OpenApiOutput attribute with verbatim string
+            // Pattern: [assembly: OpenApiOutput(@"...", "...")]
+            var match = Regex.Match(content, 
+                @"\[assembly:\s*OpenApiOutput\s*\(\s*@""(.+?)""\s*,",
+                RegexOptions.Singleline);
+
+            if (match.Success)
+            {
+                // Unescape the verbatim string (double quotes become single quotes)
+                var json = match.Groups[1].Value.Replace("\"\"", "\"");
+                Log.LogMessage(MessageImportance.Low, 
+                    "Successfully extracted JSON from generated source file.");
+                return json;
+            }
+
+            Log.LogMessage(MessageImportance.Low, 
+                "Could not parse OpenApiOutput attribute from generated source file.");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Log.LogMessage(MessageImportance.Low, 
+                $"Error reading generated source file: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Attempts to extract the OpenAPI JSON via reflection.
+    /// This is the fallback method for non-AOT scenarios.
+    /// </summary>
+    private string TryExtractViaReflection()
+    {
+        try
+        {
+            var assembly = Assembly.LoadFrom(AssemblyPath);
+            var attributes = assembly.GetCustomAttributes();
+
+            // Find the attribute by name without using type comparison
+            var attribute = attributes
+                .FirstOrDefault(a => a.GetType().FullName == "Oproto.Lambda.OpenApi.Attributes.OpenApiOutputAttribute");
+
+            if (attribute == null)
+            {
+                Log.LogMessage(MessageImportance.Low, 
+                    $"No OpenApiOutput attribute found in assembly via reflection.");
+                return null;
+            }
+
+            var json = attribute.GetType().GetProperty("Specification")?.GetValue(attribute) as string;
+            Log.LogMessage(MessageImportance.Low, 
+                "Successfully extracted JSON via reflection.");
+            return json;
+        }
+        catch (Exception ex)
+        {
+            Log.LogMessage(MessageImportance.Low, 
+                $"Reflection extraction failed: {ex.Message}");
+            return null;
         }
     }
 }
