@@ -1,5 +1,9 @@
 # Oproto Lambda OpenAPI
 
+<p align="center">
+  <img src="docs/assets/logo.svg" alt="Oproto Lambda OpenAPI" width="400">
+</p>
+
 [![Build Status](https://github.com/oproto/lambda-openapi/workflows/Build%20and%20Test/badge.svg)](https://github.com/oproto/lambda-openapi/actions)
 [![NuGet](https://img.shields.io/nuget/v/Oproto.Lambda.OpenApi.svg)](https://www.nuget.org/packages/Oproto.Lambda.OpenApi/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
