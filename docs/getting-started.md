@@ -68,9 +68,15 @@ Configure your API at the assembly level (typically in `AssemblyInfo.cs` or any 
 
 - `[OpenApiInfo]` - Sets API title, version, and metadata
 - `[OpenApiSecurityScheme]` - Defines security schemes (API Key, OAuth2, etc.)
+- `[OpenApiServer]` - Defines server URLs (production, staging, etc.)
+- `[OpenApiTagDefinition]` - Defines tags with descriptions
+- `[OpenApiExternalDocs]` - Links to external API documentation
 
 ```csharp
 [assembly: OpenApiInfo("My API", "1.0.0", Description = "API for managing resources")]
+[assembly: OpenApiServer("https://api.example.com/v1", Description = "Production")]
+[assembly: OpenApiTagDefinition("Products", Description = "Product operations")]
+[assembly: OpenApiExternalDocs("https://docs.example.com", Description = "Full documentation")]
 ```
 
 ### Method-Level Attributes
@@ -78,8 +84,12 @@ Configure your API at the assembly level (typically in `AssemblyInfo.cs` or any 
 All attributes are located in the `Oproto.Lambda.OpenApi.Attributes` namespace:
 
 - `[OpenApiOperation]` - Defines operation metadata (summary, description, deprecated)
+- `[OpenApiOperationId]` - Custom operation IDs for code generators
 - `[OpenApiTag]` - Groups operations by tags
 - `[OpenApiResponseType]` - Explicitly documents response types (useful for `IHttpResult` returns)
+- `[OpenApiResponseHeader]` - Documents response headers
+- `[OpenApiExample]` - Provides request/response examples
+- `[OpenApiExternalDocs]` - Links to external documentation (also assembly-level)
 
 ### Property/Parameter Attributes
 
@@ -157,6 +167,68 @@ public async Task<IHttpResult> GetProduct(string id)
     if (product == null)
         return HttpResults.NotFound(new ErrorResponse { Message = "Not found" });
     return HttpResults.Ok(product);
+}
+```
+
+### Deprecation with [Obsolete]
+
+The generator automatically detects the standard .NET `[Obsolete]` attribute and marks operations as deprecated:
+
+```csharp
+[LambdaFunction]
+[HttpApi(LambdaHttpMethod.Delete, "/products/{id}")]
+[Obsolete("Use the archive endpoint instead. This will be removed in v2.0.")]
+public Task DeleteProduct(string id)
+{
+    // Implementation
+}
+```
+
+### Response Headers
+
+Document response headers using `[OpenApiResponseHeader]`:
+
+```csharp
+[LambdaFunction]
+[HttpApi(LambdaHttpMethod.Get, "/products")]
+[OpenApiResponseHeader("X-Total-Count", Description = "Total products", Type = typeof(int))]
+[OpenApiResponseHeader("X-Page-Size", Description = "Page size", Type = typeof(int))]
+public Task<IEnumerable<Product>> GetProducts([FromQuery] int page = 1)
+{
+    // Implementation
+}
+```
+
+### Request and Response Examples
+
+Provide JSON examples using `[OpenApiExample]`:
+
+```csharp
+[LambdaFunction]
+[HttpApi(LambdaHttpMethod.Post, "/products")]
+[OpenApiExample("Create Request", 
+    "{\"name\": \"Widget\", \"price\": 19.99}", 
+    IsRequestExample = true)]
+[OpenApiExample("Success Response", 
+    "{\"id\": \"123\", \"name\": \"Widget\", \"price\": 19.99}", 
+    StatusCode = 200)]
+public Task<Product> CreateProduct([FromBody] CreateProductRequest request)
+{
+    // Implementation
+}
+```
+
+### Operation IDs
+
+Customize operation IDs for code generators using `[OpenApiOperationId]`:
+
+```csharp
+[LambdaFunction]
+[HttpApi(LambdaHttpMethod.Get, "/products")]
+[OpenApiOperationId("listAllProducts")]
+public Task<IEnumerable<Product>> GetProducts()
+{
+    // Implementation
 }
 ```
 

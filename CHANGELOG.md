@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Operation Examples**
+  - New `OpenApiExampleAttribute` for providing JSON request and response examples
+  - Support for multiple examples per operation
+  - Examples can be assigned to specific status codes or marked as request examples
+  - XML `<example>` tag parsing from documentation comments
+
+- **Deprecation Support**
+  - Automatic detection of `[Obsolete]` attribute on methods
+  - Sets `deprecated: true` on operations
+  - Includes obsolete message in operation description
+
+- **Response Headers**
+  - New `OpenApiResponseHeaderAttribute` for documenting response headers
+  - Support for multiple headers per operation
+  - Headers can be assigned to specific status codes
+  - Configurable type, description, and required flag
+
+- **Server Definitions**
+  - New `OpenApiServerAttribute` for defining API server URLs at assembly level
+  - Support for multiple servers (production, staging, development)
+  - Optional description for each server
+
+- **Tag Definitions**
+  - New `OpenApiTagDefinitionAttribute` for defining tags with descriptions at assembly level
+  - Support for external documentation links per tag
+  - Tags appear in the specification's tags array with full metadata
+
+- **External Documentation**
+  - New `OpenApiExternalDocsAttribute` for linking to external documentation
+  - Can be applied at assembly level (API-wide) or method level (operation-specific)
+  - Includes URL and optional description
+
+- **Operation IDs**
+  - New `OpenApiOperationIdAttribute` for custom operation IDs
+  - Auto-generation of operation IDs from method names
+  - Automatic uniqueness enforcement with numeric suffixes
+
 - **Security Scheme Attributes**
   - New `OpenApiSecuritySchemeAttribute` for defining security schemes at assembly level
   - Support for API Key, OAuth2, HTTP (Bearer/Basic), and OpenID Connect schemes
@@ -38,16 +75,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `ProductFunctions` class with GET, POST, PUT, DELETE operations
   - Model classes (`Product`, `CreateProductRequest`, `UpdateProductRequest`) showcasing `OpenApiSchema` and `OpenApiIgnore` attributes
   - Generated `openapi.json` demonstrating output
+  - Demonstrates all new attributes: `[OpenApiServer]`, `[OpenApiTagDefinition]`, `[OpenApiExternalDocs]`, `[OpenApiTag]`, `[OpenApiOperationId]`, `[OpenApiExample]`, `[OpenApiResponseHeader]`, `[Obsolete]`
 
 - **Documentation**
-  - `docs/attributes.md` - Complete attribute reference including new `OpenApiSecuritySchemeAttribute`
+  - `docs/attributes.md` - Complete attribute reference for all attributes
   - `docs/configuration.md` - MSBuild configuration options, AOT support, and troubleshooting guide
-  - Updated `docs/getting-started.md` with FromServices exclusion, API Gateway integration, and AOT sections
+  - Updated `docs/getting-started.md` with new features overview
 
 ### Changed
 
 - Solution now includes the examples project for reference and validation
 - Security schemes are now attribute-driven instead of hardcoded
+- Error responses (4xx, 5xx) no longer include a hardcoded schema - users can define their own error types using `[OpenApiResponseType]`
 - `Task<T>` and `ValueTask<T>` return types are now properly unwrapped in response schemas
 - Non-generic `Task`/`ValueTask` returns now generate 204 No Content responses
 

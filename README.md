@@ -59,26 +59,15 @@ public async Task<APIGatewayProxyResponse> GetUser(
 - [Examples](Oproto.Lambda.OpenApi.Examples/)
 - [Changelog](CHANGELOG.md)
 
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-## Security
-
-To report a security vulnerability, please see our [Security Policy](SECURITY.md).
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## About
 
-Oproto Lambda OpenAPI is developed and maintained by Oproto.
+Oproto Lambda OpenAPI is developed and maintained by [Oproto Inc](https://oproto.com), 
+a company building modern SaaS solutions for small business finance and accounting.
 
 ### Related Projects
 
-- [AWS Lambda Annotations](https://github.com/aws/aws-lambda-dotnet) - AWS Lambda .NET SDK
-- [Microsoft.OpenApi](https://github.com/microsoft/OpenAPI.NET) - OpenAPI SDK for .NET
+- [FluentDynamoDB](https://fluentdynamodb.dev)
+- [LambdaGraphQL](https://lambdagraphql.dev)
 
 ### Links
 
@@ -87,8 +76,7 @@ Oproto Lambda OpenAPI is developed and maintained by Oproto.
 - [Issue Tracker](https://github.com/oproto/lambda-openapi/issues)
 
 ### Maintainer
-
-This project is maintained by the Oproto team.
+- **Dan Guisinger** - [danguisinger.com](https://danguisinger.com)
 
 ## ❤️ Support the Project
 
@@ -107,3 +95,20 @@ You can support the project in one of two ways:
 **👉 [Buy Me a Coffee](https://buymeacoffee.com/danguisinger)** — A simple, one-time "thanks" for helping you ship faster.
 
 Every bit of support helps keep the project healthy, actively maintained, and open for the community. Thank you!
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## Security
+
+To report a security vulnerability, please see our [Security Policy](SECURITY.md).
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+
+---
+
+**Built with ❤️ for the .NET and AWS communities**

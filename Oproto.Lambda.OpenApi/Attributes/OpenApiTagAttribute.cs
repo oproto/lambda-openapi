@@ -7,9 +7,10 @@ namespace Oproto.Lambda.OpenApi.Attributes
     /// </summary>
     /// <remarks>
     ///     Tags can be used to group operations by resources or any other qualifier.
+    ///     Multiple tags can be assigned to a single operation by applying this attribute multiple times.
     /// </remarks>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Parameter |
-                    AttributeTargets.Property)]
+                    AttributeTargets.Property, AllowMultiple = true)]
     public class OpenApiTagAttribute : Attribute
     {
         /// <summary>

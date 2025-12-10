@@ -12,7 +12,7 @@
     
     <!-- Documentation - suppress warnings for generated code -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1591;CS1574</NoWarn>
+    <NoWarn>$(NoWarn);CS1591;CS1574;CS0618</NoWarn>
     
     <!-- Emit source generator output to disk for debugging -->
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
@@ -38,10 +38,16 @@
     <Analyzer Include="..\Oproto.Lambda.OpenApi.SourceGenerator\bin\$(Configuration)\netstandard2.0\Microsoft.OpenApi.dll" />
   </ItemGroup>
 
-  <!-- Note: The build task (ExtractOpenApiSpecTask) only works when consuming via NuGet package -->
-  <!-- because it needs to load the assembly and its dependencies from the same directory. -->
-  <!-- For project reference scenarios, the source generator still works and embeds the OpenAPI spec -->
-  <!-- as an assembly attribute. The generated source can be found in obj/GeneratedFiles when -->
-  <!-- EmitCompilerGeneratedFiles is enabled. -->
+  <!-- Import the build task for local development -->
+  <UsingTask TaskName="Oproto.Lambda.OpenApi.Build.ExtractOpenApiSpecTask"
+             AssemblyFile="..\Oproto.Lambda.OpenApi.Build\bin\$(Configuration)\netstandard2.0\Oproto.Lambda.OpenApi.Build.dll"/>
+
+  <Target Name="GenerateOpenApi" AfterTargets="Build">
+    <Message Text="Starting OpenAPI Generation" Importance="high"/>
+    <ExtractOpenApiSpecTask
+      AssemblyPath="$(TargetDir)$(TargetFileName)"
+      OutputPath="$(ProjectDir)openapi.json"
+      IntermediateOutputPath="$(IntermediateOutputPath)"/>
+  </Target>
 
 </Project>

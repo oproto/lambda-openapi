@@ -124,22 +124,36 @@ public class ExtractOpenApiSpecTask : Task
 
     private string GetGeneratedFilePath(string generatorName, string generatorTypeName, string fileName)
     {
-        if (string.IsNullOrEmpty(IntermediateOutputPath))
+        string objDir;
+        
+        if (!string.IsNullOrEmpty(IntermediateOutputPath))
         {
-            // Try to infer from AssemblyPath
+            // IntermediateOutputPath is typically obj/Debug/net8.0/ - go up to obj/
+            var intermediateDir = IntermediateOutputPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            objDir = Path.GetDirectoryName(Path.GetDirectoryName(intermediateDir));
+            if (objDir == null)
+            {
+                // Fallback: just use obj relative to IntermediateOutputPath parent
+                objDir = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(intermediateDir))) ?? "", "obj");
+            }
+        }
+        else
+        {
+            // Try to infer from AssemblyPath (bin/Debug/net8.0/assembly.dll)
             var assemblyDir = Path.GetDirectoryName(AssemblyPath);
             if (assemblyDir == null) return null;
             
-            // Go up from bin/Debug/net8.0 to obj/Debug/net8.0
+            // Go up from bin/Debug/net8.0 to project root, then into obj
             var projectDir = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(assemblyDir)));
             if (projectDir == null) return null;
             
-            var tfm = Path.GetFileName(assemblyDir);
-            var config = Path.GetFileName(Path.GetDirectoryName(assemblyDir));
-            IntermediateOutputPath = Path.Combine(projectDir, "obj", config, tfm);
+            objDir = Path.Combine(projectDir, "obj");
         }
 
-        return Path.Combine(IntermediateOutputPath, "generated", generatorName, generatorTypeName, fileName);
+        // Generated files are in obj/GeneratedFiles/
+        var path = Path.Combine(objDir, "GeneratedFiles", generatorName, generatorTypeName, fileName);
+        Log.LogMessage(MessageImportance.Low, $"Looking for generated file at: {path}");
+        return path;
     }
 
     /// <summary>
@@ -153,9 +167,12 @@ public class ExtractOpenApiSpecTask : Task
             var content = File.ReadAllText(filePath);
             
             // Match the OpenApiOutput attribute with verbatim string
+            // In verbatim strings, quotes are escaped as "" so we need to match that pattern
             // Pattern: [assembly: OpenApiOutput(@"...", "...")]
+            // The verbatim string content can contain "" (escaped quotes) so we match either
+            // non-quote characters or pairs of quotes
             var match = Regex.Match(content, 
-                @"\[assembly:\s*OpenApiOutput\s*\(\s*@""(.+?)""\s*,",
+                @"\[assembly:\s*OpenApiOutput\s*\(\s*@""((?:[^""]|"""")*)""\s*,",
                 RegexOptions.Singleline);
 
             if (match.Success)

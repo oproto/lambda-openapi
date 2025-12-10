@@ -1,0 +1,153 @@
+# Implementation Plan
+
+- [x] 1. Create new attribute classes
+  - [x] 1.1 Create `OpenApiExampleAttribute` class
+    - Add to `Oproto.Lambda.OpenApi/Attributes/`
+    - Properties: Name, Value (JSON string), StatusCode, IsRequestExample
+    - _Requirements: 1.1, 1.2_
+  - [x] 1.2 Create `OpenApiResponseHeaderAttribute` class
+    - Properties: Name, StatusCode, Description, Type, Required
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
+  - [x] 1.3 Create `OpenApiServerAttribute` class
+    - Assembly-level attribute
+    - Properties: Url, Description
+    - _Requirements: 4.1, 4.2_
+  - [x] 1.4 Create `OpenApiTagAttribute` class
+    - Method-level attribute, AllowMultiple
+    - Properties: Name
+    - _Requirements: 5.1, 5.3_
+  - [x] 1.5 Create `OpenApiTagDefinitionAttribute` class
+    - Assembly-level attribute, AllowMultiple
+    - Properties: Name, Description, ExternalDocsUrl, ExternalDocsDescription
+    - _Requirements: 5.2_
+  - [x] 1.6 Create `OpenApiExternalDocsAttribute` class
+    - Assembly and Method level
+    - Properties: Url, Description
+    - _Requirements: 6.1, 6.2, 6.3_
+  - [x] 1.7 Create `OpenApiOperationIdAttribute` class
+    - Method-level attribute
+    - Properties: OperationId
+    - _Requirements: 7.1, 7.2_
+
+- [x] 2. Implement OperationId generation
+  - [x] 2.1 Add operationId generation logic to `CreateOperation` method
+    - Generate from method name by default
+    - Track used IDs to ensure uniqueness
+    - _Requirements: 7.1, 7.3_
+  - [x] 2.2 Add `[OpenApiOperationId]` attribute reading
+    - Override generated ID when attribute present
+    - _Requirements: 7.2_
+  - [x] 2.3 Write property test for operationId uniqueness
+    - **Property 17: OperationId Uniqueness**
+    - **Validates: Requirements 7.3**
+
+- [x] 3. Implement deprecation support
+  - [x] 3.1 Add `[Obsolete]` attribute detection in `ExtractEndpointInfo`
+    - Set deprecated flag on EndpointInfo
+    - Extract message for description
+    - _Requirements: 2.1, 2.2, 2.3_
+  - [x] 3.2 Add deprecated field to operation output in `CreateOperation`
+    - _Requirements: 2.1_
+  - [x] 3.3 Write property test for deprecation
+    - **Property 6: Obsolete Attribute Maps to Deprecated**
+    - **Validates: Requirements 2.1**
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 5. Implement tag support
+  - [x] 5.1 Add `[OpenApiTag]` attribute reading in `ExtractEndpointInfo`
+    - Collect all tag names from method
+    - Default to "Default" if none specified
+    - _Requirements: 5.1, 5.3, 5.4_
+  - [x] 5.2 Update `CreateTags` method to use collected tags
+    - _Requirements: 5.1, 5.4_
+  - [x] 5.3 Add `[OpenApiTagDefinition]` reading from assembly
+    - Include in document's tags array with descriptions
+    - _Requirements: 5.2_
+  - [x] 5.4 Write property test for tag assignment
+    - **Property 12: Tag Assignment**
+    - **Validates: Requirements 5.1, 5.3, 5.4, 5.5**
+
+- [x] 6. Implement server definitions
+  - [x] 6.1 Add `GetServersFromAssembly` method
+    - Read `[OpenApiServer]` attributes from compilation
+    - _Requirements: 4.1, 4.2_
+  - [x] 6.2 Add servers to merged document in `MergeOpenApiDocs`
+    - Only include if attributes present
+    - _Requirements: 4.1, 4.4_
+  - [x] 6.3 Write property test for server definitions
+    - **Property 10: Server Definitions from Assembly**
+    - **Validates: Requirements 4.1, 4.2**
+
+- [x] 7. Implement external documentation
+  - [x] 7.1 Add assembly-level `[OpenApiExternalDocs]` reading
+    - Include in document's externalDocs field
+    - _Requirements: 6.1, 6.3_
+  - [x] 7.2 Add method-level `[OpenApiExternalDocs]` reading
+    - Include in operation's externalDocs field
+    - _Requirements: 6.2_
+  - [x] 7.3 Write property test for external docs
+    - **Property 14: Assembly-Level External Docs**
+    - **Validates: Requirements 6.1, 6.3**
+
+- [x] 8. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 9. Implement response headers
+  - [x] 9.1 Add `[OpenApiResponseHeader]` attribute reading
+    - Group headers by status code
+    - _Requirements: 3.1, 3.2_
+  - [x] 9.2 Update `CreateResponses` to include headers
+    - Add headers section to each response
+    - Include schema based on Type property
+    - _Requirements: 3.3, 3.4_
+  - [x] 9.3 Write property test for response headers
+    - **Property 9: Response Header Inclusion**
+    - **Validates: Requirements 3.1, 3.2, 3.3, 3.4**
+
+- [x] 10. Implement operation examples
+  - [x] 10.1 Add `[OpenApiExample]` attribute reading
+    - Parse JSON value
+    - Separate request vs response examples
+    - _Requirements: 1.2_
+  - [x] 10.2 Add XML `<example>` tag parsing
+    - Extract from method's XML documentation
+    - _Requirements: 1.1_
+  - [x] 10.3 Add examples to request body and responses
+    - Attribute takes precedence over XML
+    - Place in correct location based on IsRequestExample and StatusCode
+    - _Requirements: 1.3, 1.4, 1.5_
+  - [x] 10.4 Write property test for example inclusion
+    - **Property 2: Attribute Example Inclusion**
+    - **Validates: Requirements 1.2**
+
+- [x] 11. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 12. Update Examples project
+  - [x] 12.1 Add assembly-level attributes to Examples project
+    - `[OpenApiServer]`, `[OpenApiTagDefinition]`, `[OpenApiExternalDocs]`
+    - _Requirements: 4.1, 5.2, 6.1_
+  - [x] 12.2 Add method-level attributes to ProductFunctions
+    - `[OpenApiTag]`, `[OpenApiOperationId]`, `[OpenApiExample]`, `[OpenApiResponseHeader]`
+    - Mark one method with `[Obsolete]`
+    - _Requirements: 1.2, 2.1, 3.1, 5.1, 7.2_
+  - [x] 12.3 Rebuild and verify generated openapi.json
+    - Confirm all new features appear in output
+    - _Requirements: 9.3_
+
+- [x] 13. Update documentation
+  - [x] 13.1 Update `docs/attributes.md` with all new attributes
+    - Include usage examples for each
+    - _Requirements: 8.1_
+  - [x] 13.2 Update `docs/getting-started.md` with new features overview
+    - _Requirements: 8.1_
+  - [x] 13.3 Update `CHANGELOG.md` with all changes
+    - _Requirements: 8.2_
+  - [x] 13.4 Update `docs/DOCUMENTATION_CHANGELOG.md`
+    - Truncate old entries, add new feature documentation
+    - _Requirements: 8.3_
+
+- [x] 14. Final Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
