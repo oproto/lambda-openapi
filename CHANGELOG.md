@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2025-12-10
 
 ### Added
 
@@ -92,6 +92,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed `[OpenApiOperation]` attribute not being applied - Summary, Description, and Deprecated properties now work correctly
+- Added `OperationId` property to `[OpenApiOperation]` attribute as an alternative to `[OpenApiOperationId]`
 - Fixed `Task<T>` return types appearing in OpenAPI response schemas instead of inner type `T`
 - Fixed package version alignment - removed hardcoded version from SourceGenerator.csproj
 

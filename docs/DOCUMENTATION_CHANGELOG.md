@@ -7,6 +7,8 @@ All notable documentation changes for this project. Use this file to sync docume
 ### Added
 
 #### attributes.md
+- Added `OperationId` property documentation to `OpenApiOperationAttribute`
+- Added "Deprecation" subsection explaining both `[OpenApiOperation(Deprecated=true)]` and `[Obsolete]` approaches
 - Added documentation for `OpenApiExampleAttribute` - request/response examples with JSON content
 - Added documentation for `OpenApiResponseHeaderAttribute` - response header documentation
 - Added documentation for `OpenApiServerAttribute` - server URL definitions

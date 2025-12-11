@@ -1106,7 +1106,13 @@ using Oproto.Lambda.OpenApi.Attributes;
                 ? endpoint.OperationId 
                 : GetOperationId(endpoint.MethodSymbol, endpoint.MethodName);
 
-            // Set deprecated flag if method has [Obsolete] attribute
+            // Apply [OpenApiOperation] attribute values (overrides XML docs and generated values)
+            if (endpoint.MethodSymbol != null)
+            {
+                ApplyOperationAttribute(operation, endpoint.MethodSymbol);
+            }
+
+            // Set deprecated flag if method has [Obsolete] attribute (in addition to [OpenApiOperation(Deprecated=true)])
             if (endpoint.IsDeprecated)
             {
                 operation.Deprecated = true;

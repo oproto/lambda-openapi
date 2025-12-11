@@ -187,3 +187,161 @@ public class TestFunctions
             .TrimEnd('"');
     }
 }
+
+
+/// <summary>
+/// Property-based tests for tag definition functionality.
+/// </summary>
+public class TagDefinitionPropertyTests
+{
+    /// <summary>
+    /// **Feature: openapi-completeness, Property 13: Tag Definitions**
+    /// **Validates: Requirements 5.2**
+    /// 
+    /// For any assembly with [OpenApiTagDefinition] attributes, the generated specification SHALL contain
+    /// tag definitions with names and descriptions in the tags array.
+    /// </summary>
+    [Property(MaxTest = 100)]
+    public Property TagDefinitionAttribute_IncludesTagsInSpecification()
+    {
+        var tagNameGen = Gen.Elements("Products", "Orders", "Users", "Admin", "Public");
+        var descriptionGen = Gen.Elements(
+            "Product management operations",
+            "Order processing endpoints",
+            "User account operations",
+            "Administrative functions",
+            "Public API endpoints");
+
+        // Generate tag definitions as tuples
+        var tagDefGen = Gen.Zip(tagNameGen, descriptionGen)
+            .Select(t => (Name: t.Item1, Description: t.Item2));
+
+        var tagDefsGen = Gen.ListOf(tagDefGen)
+            .Select(defs => defs.DistinctBy(d => d.Name).Take(3).ToList());
+
+        return Prop.ForAll(
+            tagDefsGen.ToArbitrary(),
+            tagDefs =>
+            {
+                var source = GenerateSourceWithTagDefinitions(tagDefs);
+                var extractedTags = ExtractTagDefinitions(source);
+
+                if (tagDefs.Count == 0)
+                {
+                    // No tag definitions, tags array may be empty or contain only operation tags
+                    return true.Label("No tag definitions specified");
+                }
+
+                // All specified tag definitions should be present with descriptions
+                var allTagsPresent = tagDefs.All(td =>
+                    extractedTags.Any(et => et.Name == td.Name && et.Description == td.Description));
+
+                return allTagsPresent
+                    .Label($"Expected tag definitions [{string.Join(", ", tagDefs.Select(t => $"{t.Name}:{t.Description}"))}], " +
+                           $"but got [{string.Join(", ", extractedTags.Select(t => $"{t.Name}:{t.Description}"))}]");
+            });
+    }
+
+    private string GenerateSourceWithTagDefinitions(List<(string Name, string Description)> tagDefs)
+    {
+        var tagDefAttributes = tagDefs.Count > 0
+            ? string.Join("\n", tagDefs.Select(td =>
+                $@"[assembly: Oproto.Lambda.OpenApi.Attributes.OpenApiTagDefinition(""{td.Name}"", Description = ""{td.Description}"")]"))
+            : "";
+
+        // Use the first tag name for the operation if available
+        var operationTag = tagDefs.Count > 0
+            ? $@"[Oproto.Lambda.OpenApi.Attributes.OpenApiTag(""{tagDefs[0].Name}"")]"
+            : "";
+
+        return $@"
+using Amazon.Lambda.Annotations;
+using Amazon.Lambda.Annotations.APIGateway;
+using System.Threading.Tasks;
+
+{tagDefAttributes}
+
+public class TestFunctions 
+{{
+    [LambdaFunction]
+    [HttpApi(LambdaHttpMethod.Get, ""/items/{{id}}"")]
+    {operationTag}
+    public string GetItem(string id) => ""test"";
+}}";
+    }
+
+    private List<(string Name, string Description)> ExtractTagDefinitions(string source)
+    {
+        try
+        {
+            var compilation = CompilerHelper.CreateCompilation(source);
+            var generator = new OpenApiSpecGenerator();
+
+            var driver = CSharpGeneratorDriver.Create(generator);
+            driver.RunGeneratorsAndUpdateCompilation(compilation,
+                out var outputCompilation,
+                out var diagnostics);
+
+            if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
+                return new List<(string, string)>();
+
+            var jsonContent = ExtractOpenApiJson(outputCompilation);
+            if (string.IsNullOrEmpty(jsonContent))
+                return new List<(string, string)>();
+
+            using var doc = JsonDocument.Parse(jsonContent);
+
+            var tags = new List<(string Name, string Description)>();
+
+            // Get tags from the root tags array
+            if (doc.RootElement.TryGetProperty("tags", out var tagsArray))
+            {
+                foreach (var tag in tagsArray.EnumerateArray())
+                {
+                    var name = tag.TryGetProperty("name", out var nameProp) ? nameProp.GetString() : null;
+                    var description = tag.TryGetProperty("description", out var descProp) ? descProp.GetString() : null;
+
+                    if (name != null)
+                    {
+                        tags.Add((name, description ?? ""));
+                    }
+                }
+            }
+
+            return tags;
+        }
+        catch
+        {
+            return new List<(string, string)>();
+        }
+    }
+
+    private string ExtractOpenApiJson(Compilation outputCompilation)
+    {
+        var generatedFile = outputCompilation.SyntaxTrees
+            .FirstOrDefault(x => x.FilePath.EndsWith("OpenApiOutput.g.cs"));
+
+        if (generatedFile == null)
+            return string.Empty;
+
+        var generatedContent = generatedFile.GetRoot().GetText().ToString();
+
+        var attributeStart = generatedContent.IndexOf("[assembly: OpenApiOutput(@\"") + 26;
+        var attributeEnd = generatedContent.LastIndexOf("\", \"openapi.json\")]");
+
+        if (attributeStart < 26 || attributeEnd < 0)
+            return string.Empty;
+
+        var rawJson = generatedContent[attributeStart..attributeEnd];
+
+        return rawJson
+            .Replace("\"\"", "\"")
+            .Replace("\r\n", " ")
+            .Replace("\n", " ")
+            .Replace("\r", " ")
+            .Replace("\\\"", "\"")
+            .Trim()
+            .TrimStart('"')
+            .TrimEnd('"');
+    }
+}

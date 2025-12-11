@@ -8,8 +8,8 @@
     <PackageId>Oproto.Lambda.OpenApi</PackageId>
     <Title>Oproto Lambda OpenAPI</Title>
     <Description>OpenAPI specification generation for AWS Lambda functions. Includes attributes, source generator, and MSBuild task for automatic OpenAPI document generation.</Description>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Initial public release with rebranded package names</PackageReleaseNotes>
+    <PackageReadmeFile>PACKAGE_README.md</PackageReadmeFile>
+    <PackageReleaseNotes>Initial release with comprehensive OpenAPI generation for AWS Lambda. Features include operation examples, deprecation support, response headers, server definitions, tag definitions, external documentation, operation IDs, security schemes, response type attributes, and AOT compilation support.</PackageReleaseNotes>
     
     <!-- Documentation -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -21,7 +21,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\PACKAGE_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <!-- Bundle the source generator -->

@@ -458,7 +458,7 @@ When no `[OpenApiResponseType]` attributes are present:
 
 ## OpenApiOperationAttribute
 
-Provides additional OpenAPI operation information for methods. Use this attribute to add metadata to API operations such as summary, description, and deprecation status.
+Provides additional OpenAPI operation information for methods. Use this attribute to add metadata to API operations such as summary, description, deprecation status, and operation ID.
 
 **Namespace:** `Oproto.Lambda.OpenApi.Attributes`
 
@@ -470,13 +470,26 @@ Provides additional OpenAPI operation information for methods. Use this attribut
 |----------|------|----------|---------|-------------|
 | `Summary` | `string` | No | `null` | A short summary of what the operation does. Displayed as the operation title in documentation. |
 | `Description` | `string` | No | `null` | A detailed explanation of the operation behavior. Supports markdown formatting. |
-| `Deprecated` | `bool` | No | `false` | Indicates whether the operation is deprecated. |
+| `Deprecated` | `bool` | No | `false` | Indicates whether the operation is deprecated. Can also be set using `[Obsolete]`. |
+| `OperationId` | `string` | No | `null` | A custom operation ID for code generation. If not specified, generated from method name. |
 
 ### When to Use
 
 Apply this attribute to Lambda function methods to provide human-readable documentation that will appear in the generated OpenAPI specification. The summary appears as a brief title, while the description can contain more detailed information about the operation's behavior, expected inputs, and outputs.
 
-### Usage Example
+This attribute values override XML documentation comments when both are present.
+
+### Deprecation
+
+Operations can be marked as deprecated in two ways:
+- Using `[OpenApiOperation(Deprecated = true)]`
+- Using the standard `[Obsolete]` attribute (which also captures the deprecation message)
+
+Both approaches work, and can be combined. The `[Obsolete]` attribute is recommended when you also want compiler warnings.
+
+### Usage Examples
+
+**Basic usage:**
 
 ```csharp
 [LambdaFunction]
@@ -488,8 +501,25 @@ public Task<Product> GetProduct(string id)
 {
     // Implementation
 }
+```
 
-// Example with deprecated operation
+**With operation ID:**
+
+```csharp
+[LambdaFunction]
+[HttpApi(LambdaHttpMethod.Get, "/products")]
+[OpenApiOperation(
+    Summary = "List all products",
+    OperationId = "listAllProducts")]
+public Task<IEnumerable<Product>> GetProducts()
+{
+    // Implementation
+}
+```
+
+**Deprecated operation:**
+
+```csharp
 [LambdaFunction]
 [HttpApi(LambdaHttpMethod.Get, "/products/legacy")]
 [OpenApiOperation(
@@ -497,6 +527,15 @@ public Task<Product> GetProduct(string id)
     Description = "This endpoint is deprecated. Use GET /products instead.",
     Deprecated = true)]
 public Task<IEnumerable<Product>> GetProductsLegacy()
+{
+    // Implementation
+}
+
+// Or using [Obsolete] for compiler warnings too:
+[LambdaFunction]
+[HttpApi(LambdaHttpMethod.Get, "/products/old")]
+[Obsolete("Use GET /products instead")]
+public Task<IEnumerable<Product>> GetProductsOld()
 {
     // Implementation
 }

@@ -310,3 +310,155 @@ public class TestFunctions
             .TrimEnd('"');
     }
 }
+
+
+/// <summary>
+/// Property-based tests for example precedence functionality.
+/// </summary>
+public class ExamplePrecedencePropertyTests
+{
+    /// <summary>
+    /// **Feature: openapi-completeness, Property 3: Example Attribute Precedence**
+    /// **Validates: Requirements 1.3**
+    /// 
+    /// For any method with both XML example and [OpenApiExample] attribute,
+    /// the attribute value SHALL appear in the output (not the XML value).
+    /// </summary>
+    [Property(MaxTest = 100)]
+    public Property AttributeExample_TakesPrecedenceOverXmlExample()
+    {
+        var attributeJsonGen = Gen.Elements(
+            "{\"source\": \"attribute\", \"id\": 1}",
+            "{\"from\": \"attribute\", \"value\": 42}",
+            "{\"type\": \"attribute\", \"data\": true}");
+
+        return Prop.ForAll(
+            attributeJsonGen.ToArbitrary(),
+            attributeJson =>
+            {
+                // XML example has different content than attribute
+                var xmlJson = "{\"source\": \"xml\", \"id\": 999}";
+                var source = GenerateSourceWithBothExamples(attributeJson, xmlJson);
+                var extractedExample = ExtractResponseExample(source);
+
+                if (extractedExample == null)
+                    return false.Label("No example found in response");
+
+                // The attribute example should be present, not the XML example
+                var hasAttributeContent = extractedExample.Contains("attribute");
+                var noXmlContent = !extractedExample.Contains("xml") && !extractedExample.Contains("999");
+
+                return (hasAttributeContent && noXmlContent)
+                    .Label($"Expected attribute example content, but got: {extractedExample}");
+            });
+    }
+
+    private string GenerateSourceWithBothExamples(string attributeJson, string xmlJson)
+    {
+        var escapedAttributeJson = attributeJson.Replace("\"", "\\\"");
+
+        return $@"
+using Amazon.Lambda.Annotations;
+using Amazon.Lambda.Annotations.APIGateway;
+using System.Threading.Tasks;
+
+public class TestResponse
+{{
+    public string Source {{ get; set; }}
+    public int Id {{ get; set; }}
+}}
+
+public class TestFunctions 
+{{
+    /// <summary>
+    /// Test method with XML example
+    /// </summary>
+    /// <example>
+    /// {xmlJson}
+    /// </example>
+    [LambdaFunction]
+    [HttpApi(LambdaHttpMethod.Get, ""/items/{{id}}"")]
+    [Oproto.Lambda.OpenApi.Attributes.OpenApiExample(""Attribute Example"", ""{escapedAttributeJson}"", StatusCode = 200)]
+    public TestResponse GetItem(string id) => new TestResponse {{ Source = ""test"", Id = 1 }};
+}}";
+    }
+
+    private string? ExtractResponseExample(string source)
+    {
+        try
+        {
+            var compilation = CompilerHelper.CreateCompilation(source);
+            var generator = new OpenApiSpecGenerator();
+
+            var driver = CSharpGeneratorDriver.Create(generator);
+            driver.RunGeneratorsAndUpdateCompilation(compilation,
+                out var outputCompilation,
+                out var diagnostics);
+
+            if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
+                return null;
+
+            var jsonContent = ExtractOpenApiJson(outputCompilation);
+            if (string.IsNullOrEmpty(jsonContent))
+                return null;
+
+            using var doc = JsonDocument.Parse(jsonContent);
+
+            if (doc.RootElement.TryGetProperty("paths", out var paths))
+            {
+                foreach (var path in paths.EnumerateObject())
+                {
+                    foreach (var operation in path.Value.EnumerateObject())
+                    {
+                        if (operation.Name.StartsWith("x-") || operation.Name == "parameters")
+                            continue;
+
+                        if (operation.Value.TryGetProperty("responses", out var responses) &&
+                            responses.TryGetProperty("200", out var response200) &&
+                            response200.TryGetProperty("content", out var content) &&
+                            content.TryGetProperty("application/json", out var mediaType) &&
+                            mediaType.TryGetProperty("example", out var example))
+                        {
+                            return example.ToString();
+                        }
+                    }
+                }
+            }
+        }
+        catch
+        {
+            return null;
+        }
+
+        return null;
+    }
+
+    private string ExtractOpenApiJson(Compilation outputCompilation)
+    {
+        var generatedFile = outputCompilation.SyntaxTrees
+            .FirstOrDefault(x => x.FilePath.EndsWith("OpenApiOutput.g.cs"));
+
+        if (generatedFile == null)
+            return string.Empty;
+
+        var generatedContent = generatedFile.GetRoot().GetText().ToString();
+
+        var attributeStart = generatedContent.IndexOf("[assembly: OpenApiOutput(@\"") + 26;
+        var attributeEnd = generatedContent.LastIndexOf("\", \"openapi.json\")]");
+
+        if (attributeStart < 26 || attributeEnd < 0)
+            return string.Empty;
+
+        var rawJson = generatedContent[attributeStart..attributeEnd];
+
+        return rawJson
+            .Replace("\"\"", "\"")
+            .Replace("\r\n", " ")
+            .Replace("\n", " ")
+            .Replace("\r", " ")
+            .Replace("\\\"", "\"")
+            .Trim()
+            .TrimStart('"')
+            .TrimEnd('"');
+    }
+}

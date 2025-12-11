@@ -122,14 +122,23 @@ public partial class OpenApiSpecGenerator
             switch (namedArg.Key)
             {
                 case "Summary":
-                    operation.Summary = namedArg.Value.Value?.ToString();
+                    var summary = namedArg.Value.Value?.ToString();
+                    if (!string.IsNullOrEmpty(summary))
+                        operation.Summary = summary;
                     break;
                 case "Description":
-                    operation.Description = namedArg.Value.Value?.ToString();
+                    var description = namedArg.Value.Value?.ToString();
+                    if (!string.IsNullOrEmpty(description))
+                        operation.Description = description;
                     break;
                 case "Deprecated":
                     if (namedArg.Value.Value is bool deprecated)
                         operation.Deprecated = deprecated;
+                    break;
+                case "OperationId":
+                    var operationId = namedArg.Value.Value?.ToString();
+                    if (!string.IsNullOrEmpty(operationId))
+                        operation.OperationId = operationId;
                     break;
             }
     }
@@ -137,7 +146,9 @@ public partial class OpenApiSpecGenerator
     private AttributeData GetAttribute(ISymbol symbol, string attributeName)
     {
         return symbol.GetAttributes()
-            .FirstOrDefault(attr => attr.AttributeClass?.Name == attributeName);
+            .FirstOrDefault(attr => 
+                attr.AttributeClass?.Name == attributeName ||
+                attr.AttributeClass?.Name == attributeName + "Attribute");
     }
 
     private bool HasAttribute(ISymbol symbol, string attributeName)
