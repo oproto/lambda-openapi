@@ -13,7 +13,7 @@ public class ExtractOpenApiSpecTask : Task
     [Required] public string AssemblyPath { get; set; }
 
     [Required] public string OutputPath { get; set; }
-    
+
     /// <summary>
     /// Optional path to the intermediate output directory where generated files are stored.
     /// Used for AOT-compatible extraction from source files.
@@ -39,7 +39,7 @@ public class ExtractOpenApiSpecTask : Task
 
             // Strategy 1: Try parsing generated source file (AOT-compatible)
             var json = TryExtractFromSourceFile();
-            
+
             // Strategy 2: Fall back to reflection (non-AOT)
             if (json == null)
             {
@@ -82,12 +82,12 @@ public class ExtractOpenApiSpecTask : Task
         var sourceFilePath = FindGeneratedSourceFile();
         if (sourceFilePath == null || !File.Exists(sourceFilePath))
         {
-            Log.LogMessage(MessageImportance.Low, 
+            Log.LogMessage(MessageImportance.Low,
                 "Generated source file not found. Will try reflection fallback.");
             return null;
         }
 
-        Log.LogMessage(MessageImportance.Normal, 
+        Log.LogMessage(MessageImportance.Normal,
             $"Found generated source file: {sourceFilePath}");
 
         return ExtractJsonFromSourceFile(sourceFilePath);
@@ -102,12 +102,12 @@ public class ExtractOpenApiSpecTask : Task
         var possiblePaths = new[]
         {
             // Standard path when EmitCompilerGeneratedFiles=true
-            GetGeneratedFilePath("Oproto.Lambda.OpenApi.SourceGenerator", 
-                "Oproto.Lambda.OpenApi.SourceGenerator.OpenApiSpecGenerator", 
+            GetGeneratedFilePath("Oproto.Lambda.OpenApi.SourceGenerator",
+                "Oproto.Lambda.OpenApi.SourceGenerator.OpenApiSpecGenerator",
                 "OpenApiOutput.g.cs"),
             // Alternative path structure
-            GetGeneratedFilePath("Oproto.Lambda.OpenApi.SourceGenerator", 
-                "OpenApiSpecGenerator", 
+            GetGeneratedFilePath("Oproto.Lambda.OpenApi.SourceGenerator",
+                "OpenApiSpecGenerator",
                 "OpenApiOutput.g.cs"),
         };
 
@@ -125,7 +125,7 @@ public class ExtractOpenApiSpecTask : Task
     private string GetGeneratedFilePath(string generatorName, string generatorTypeName, string fileName)
     {
         string objDir;
-        
+
         if (!string.IsNullOrEmpty(IntermediateOutputPath))
         {
             // IntermediateOutputPath is typically obj/Debug/net8.0/ - go up to obj/
@@ -142,11 +142,11 @@ public class ExtractOpenApiSpecTask : Task
             // Try to infer from AssemblyPath (bin/Debug/net8.0/assembly.dll)
             var assemblyDir = Path.GetDirectoryName(AssemblyPath);
             if (assemblyDir == null) return null;
-            
+
             // Go up from bin/Debug/net8.0 to project root, then into obj
             var projectDir = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(assemblyDir)));
             if (projectDir == null) return null;
-            
+
             objDir = Path.Combine(projectDir, "obj");
         }
 
@@ -165,13 +165,13 @@ public class ExtractOpenApiSpecTask : Task
         try
         {
             var content = File.ReadAllText(filePath);
-            
+
             // Match the OpenApiOutput attribute with verbatim string
             // In verbatim strings, quotes are escaped as "" so we need to match that pattern
             // Pattern: [assembly: OpenApiOutput(@"...", "...")]
             // The verbatim string content can contain "" (escaped quotes) so we match either
             // non-quote characters or pairs of quotes
-            var match = Regex.Match(content, 
+            var match = Regex.Match(content,
                 @"\[assembly:\s*OpenApiOutput\s*\(\s*@""((?:[^""]|"""")*)""\s*,",
                 RegexOptions.Singleline);
 
@@ -179,18 +179,18 @@ public class ExtractOpenApiSpecTask : Task
             {
                 // Unescape the verbatim string (double quotes become single quotes)
                 var json = match.Groups[1].Value.Replace("\"\"", "\"");
-                Log.LogMessage(MessageImportance.Low, 
+                Log.LogMessage(MessageImportance.Low,
                     "Successfully extracted JSON from generated source file.");
                 return json;
             }
 
-            Log.LogMessage(MessageImportance.Low, 
+            Log.LogMessage(MessageImportance.Low,
                 "Could not parse OpenApiOutput attribute from generated source file.");
             return null;
         }
         catch (Exception ex)
         {
-            Log.LogMessage(MessageImportance.Low, 
+            Log.LogMessage(MessageImportance.Low,
                 $"Error reading generated source file: {ex.Message}");
             return null;
         }
@@ -216,19 +216,19 @@ public class ExtractOpenApiSpecTask : Task
 
             if (attribute == null)
             {
-                Log.LogMessage(MessageImportance.Low, 
+                Log.LogMessage(MessageImportance.Low,
                     $"No OpenApiOutput attribute found in assembly via reflection.");
                 return null;
             }
 
             var json = attribute.GetType().GetProperty("Specification")?.GetValue(attribute) as string;
-            Log.LogMessage(MessageImportance.Low, 
+            Log.LogMessage(MessageImportance.Low,
                 "Successfully extracted JSON via reflection.");
             return json;
         }
         catch (Exception ex)
         {
-            Log.LogMessage(MessageImportance.Low, 
+            Log.LogMessage(MessageImportance.Low,
                 $"Reflection extraction failed: {ex.Message}");
             return null;
         }

@@ -28,29 +28,29 @@ public class ExternalDocsPropertyTests
             "https://api.example.com/docs",
             "https://wiki.example.com/api-guide",
             "https://developer.example.com/reference");
-        
+
         var descriptionGen = Gen.OneOf(
             Gen.Constant((string?)null),
             Gen.Elements("Full API documentation", "Developer guide", "API reference", "Getting started guide")
                 .Select(s => (string?)s));
-        
+
         var externalDocsGen = Gen.Zip(urlGen, descriptionGen)
             .Select(t => (Url: t.Item1, Description: t.Item2));
-        
+
         return Prop.ForAll(
             externalDocsGen.ToArbitrary(),
             externalDocs =>
             {
                 var source = GenerateSourceWithAssemblyExternalDocs(externalDocs.Url, externalDocs.Description);
                 var extractedDocs = ExtractExternalDocs(source);
-                
+
                 // External docs should be present with correct URL
                 var urlMatches = extractedDocs.Url == externalDocs.Url;
-                
+
                 // Description should match when provided
-                var descriptionMatches = externalDocs.Description == null || 
+                var descriptionMatches = externalDocs.Description == null ||
                                          extractedDocs.Description == externalDocs.Description;
-                
+
                 return (urlMatches && descriptionMatches)
                     .Label($"Expected URL '{externalDocs.Url}' with description '{externalDocs.Description}', " +
                            $"but got URL '{extractedDocs.Url}' with description '{extractedDocs.Description}'");
@@ -73,29 +73,29 @@ public class ExternalDocsPropertyTests
             "https://api.example.com/docs/get-product",
             "https://wiki.example.com/product-api",
             "https://developer.example.com/products/reference");
-        
+
         var descriptionGen = Gen.OneOf(
             Gen.Constant((string?)null),
             Gen.Elements("Product API documentation", "Get product guide", "Product reference", "Product endpoint docs")
                 .Select(s => (string?)s));
-        
+
         var externalDocsGen = Gen.Zip(urlGen, descriptionGen)
             .Select(t => (Url: t.Item1, Description: t.Item2));
-        
+
         return Prop.ForAll(
             externalDocsGen.ToArbitrary(),
             externalDocs =>
             {
                 var source = GenerateSourceWithMethodExternalDocs(externalDocs.Url, externalDocs.Description);
                 var extractedDocs = ExtractOperationExternalDocs(source, "/items/{id}");
-                
+
                 // External docs should be present with correct URL
                 var urlMatches = extractedDocs.Url == externalDocs.Url;
-                
+
                 // Description should match when provided
-                var descriptionMatches = externalDocs.Description == null || 
+                var descriptionMatches = externalDocs.Description == null ||
                                          extractedDocs.Description == externalDocs.Description;
-                
+
                 return (urlMatches && descriptionMatches)
                     .Label($"Expected URL '{externalDocs.Url}' with description '{externalDocs.Description}', " +
                            $"but got URL '{extractedDocs.Url}' with description '{extractedDocs.Description}'");
@@ -110,14 +110,14 @@ public class ExternalDocsPropertyTests
     public Property NoAssemblyExternalDocs_OmitsExternalDocsFromSpecification()
     {
         var methodNameGen = Gen.Elements("GetProduct", "CreateOrder", "UpdateUser", "DeleteItem");
-        
+
         return Prop.ForAll(
             methodNameGen.ToArbitrary(),
             methodName =>
             {
                 var source = GenerateSourceWithoutExternalDocs(methodName);
                 var extractedDocs = ExtractExternalDocs(source);
-                
+
                 var noExternalDocs = extractedDocs.Url == null;
                 return noExternalDocs
                     .Label($"Expected no external docs when none defined, but got URL '{extractedDocs.Url}'");
@@ -127,7 +127,7 @@ public class ExternalDocsPropertyTests
     private static string GenerateSourceWithAssemblyExternalDocs(string url, string? description)
     {
         var descriptionPart = description != null ? $@", Description = ""{description}""" : "";
-        
+
         return $@"
 [assembly: Oproto.Lambda.OpenApi.Attributes.OpenApiExternalDocs(""{url}""{descriptionPart})]
 
@@ -146,7 +146,7 @@ public class TestFunctions
     private static string GenerateSourceWithMethodExternalDocs(string url, string? description)
     {
         var descriptionPart = description != null ? $@", Description = ""{description}""" : "";
-        
+
         return $@"
 using Amazon.Lambda.Annotations;
 using Amazon.Lambda.Annotations.APIGateway;
@@ -183,33 +183,33 @@ public class TestFunctions
         {
             var compilation = CompilerHelper.CreateCompilation(source);
             var generator = new OpenApiSpecGenerator();
-            
+
             var driver = CSharpGeneratorDriver.Create(generator);
             driver.RunGeneratorsAndUpdateCompilation(compilation,
                 out var outputCompilation,
                 out var diagnostics);
-            
+
             // Check for errors
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                 return (null, null);
-            
+
             var jsonContent = ExtractOpenApiJson(outputCompilation);
             if (string.IsNullOrEmpty(jsonContent))
                 return (null, null);
-            
+
             using var doc = JsonDocument.Parse(jsonContent);
-            
+
             if (doc.RootElement.TryGetProperty("externalDocs", out var externalDocs))
             {
-                var url = externalDocs.TryGetProperty("url", out var urlProp) 
-                    ? urlProp.GetString() 
+                var url = externalDocs.TryGetProperty("url", out var urlProp)
+                    ? urlProp.GetString()
                     : null;
-                var description = externalDocs.TryGetProperty("description", out var descProp) 
-                    ? descProp.GetString() 
+                var description = externalDocs.TryGetProperty("description", out var descProp)
+                    ? descProp.GetString()
                     : null;
                 return (url, description);
             }
-            
+
             return (null, null);
         }
         catch
@@ -224,36 +224,36 @@ public class TestFunctions
         {
             var compilation = CompilerHelper.CreateCompilation(source);
             var generator = new OpenApiSpecGenerator();
-            
+
             var driver = CSharpGeneratorDriver.Create(generator);
             driver.RunGeneratorsAndUpdateCompilation(compilation,
                 out var outputCompilation,
                 out var diagnostics);
-            
+
             // Check for errors
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                 return (null, null);
-            
+
             var jsonContent = ExtractOpenApiJson(outputCompilation);
             if (string.IsNullOrEmpty(jsonContent))
                 return (null, null);
-            
+
             using var doc = JsonDocument.Parse(jsonContent);
-            
+
             if (doc.RootElement.TryGetProperty("paths", out var paths) &&
                 paths.TryGetProperty(path, out var pathItem) &&
                 pathItem.TryGetProperty("get", out var operation) &&
                 operation.TryGetProperty("externalDocs", out var externalDocs))
             {
-                var url = externalDocs.TryGetProperty("url", out var urlProp) 
-                    ? urlProp.GetString() 
+                var url = externalDocs.TryGetProperty("url", out var urlProp)
+                    ? urlProp.GetString()
                     : null;
-                var description = externalDocs.TryGetProperty("description", out var descProp) 
-                    ? descProp.GetString() 
+                var description = externalDocs.TryGetProperty("description", out var descProp)
+                    ? descProp.GetString()
                     : null;
                 return (url, description);
             }
-            
+
             return (null, null);
         }
         catch

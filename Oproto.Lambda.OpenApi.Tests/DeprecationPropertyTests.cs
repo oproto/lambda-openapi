@@ -24,11 +24,11 @@ public class DeprecationPropertyTests
         var methodNameGen = Gen.Elements("GetProduct", "CreateOrder", "UpdateUser", "DeleteItem", "ListCustomers");
         var hasObsoleteGen = Arb.Generate<bool>();
         var obsoleteMessageGen = Gen.Elements(
-            (string)null, 
-            "This endpoint is deprecated", 
-            "Use v2 API instead", 
+            (string)null,
+            "This endpoint is deprecated",
+            "Use v2 API instead",
             "Will be removed in next version");
-        
+
         return Prop.ForAll(
             methodNameGen.ToArbitrary(),
             hasObsoleteGen.ToArbitrary(),
@@ -37,16 +37,16 @@ public class DeprecationPropertyTests
             {
                 var source = GenerateSourceWithObsolete(methodName, hasObsolete, obsoleteMessage);
                 var (isDeprecated, description) = ExtractDeprecationInfo(source);
-                
+
                 if (hasObsolete)
                 {
                     // If method has [Obsolete], operation should be deprecated
                     var deprecatedCorrect = isDeprecated;
-                    
+
                     // If there's a message, it should appear in the description
-                    var messageCorrect = string.IsNullOrEmpty(obsoleteMessage) || 
+                    var messageCorrect = string.IsNullOrEmpty(obsoleteMessage) ||
                                          (description?.Contains(obsoleteMessage) ?? false);
-                    
+
                     return (deprecatedCorrect && messageCorrect)
                         .Label($"Expected deprecated=true (got {isDeprecated}) and message '{obsoleteMessage}' in description '{description}'");
                 }
@@ -68,7 +68,7 @@ public class DeprecationPropertyTests
                 ? "[System.Obsolete]"
                 : $@"[System.Obsolete(""{obsoleteMessage}"")]";
         }
-        
+
         return $@"
 using Amazon.Lambda.Annotations;
 using Amazon.Lambda.Annotations.APIGateway;
@@ -89,22 +89,22 @@ public class TestFunctions
         {
             var compilation = CompilerHelper.CreateCompilation(source);
             var generator = new OpenApiSpecGenerator();
-            
+
             var driver = CSharpGeneratorDriver.Create(generator);
             driver.RunGeneratorsAndUpdateCompilation(compilation,
                 out var outputCompilation,
                 out var diagnostics);
-            
+
             // Check for errors
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                 return (false, null);
-            
+
             var jsonContent = ExtractOpenApiJson(outputCompilation);
             if (string.IsNullOrEmpty(jsonContent))
                 return (false, null);
-            
+
             using var doc = JsonDocument.Parse(jsonContent);
-            
+
             // Navigate to the first operation
             if (doc.RootElement.TryGetProperty("paths", out var paths))
             {
@@ -115,20 +115,20 @@ public class TestFunctions
                         // Skip non-operation properties
                         if (operation.Name.StartsWith("x-") || operation.Name == "parameters")
                             continue;
-                        
+
                         var isDeprecated = false;
                         string description = null;
-                        
+
                         if (operation.Value.TryGetProperty("deprecated", out var deprecatedProp))
                         {
                             isDeprecated = deprecatedProp.GetBoolean();
                         }
-                        
+
                         if (operation.Value.TryGetProperty("description", out var descProp))
                         {
                             description = descProp.GetString();
                         }
-                        
+
                         return (isDeprecated, description);
                     }
                 }
@@ -138,7 +138,7 @@ public class TestFunctions
         {
             // Return default on error
         }
-        
+
         return (false, null);
     }
 

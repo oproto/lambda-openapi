@@ -35,7 +35,8 @@ public partial class OpenApiSpecGenerator
         if (exampleAttribute != null)
         {
             var exampleValue = exampleAttribute.ConstructorArguments.FirstOrDefault().Value;
-            if (exampleValue != null) schema.Example = ConvertToOpenApiAny(exampleValue);
+            if (exampleValue != null)
+                schema.Example = ConvertToOpenApiAny(exampleValue);
         }
     }
 
@@ -146,7 +147,7 @@ public partial class OpenApiSpecGenerator
     private AttributeData GetAttribute(ISymbol symbol, string attributeName)
     {
         return symbol.GetAttributes()
-            .FirstOrDefault(attr => 
+            .FirstOrDefault(attr =>
                 attr.AttributeClass?.Name == attributeName ||
                 attr.AttributeClass?.Name == attributeName + "Attribute");
     }

@@ -24,7 +24,7 @@ public class OperationIdPropertyTests
         // Generate random number of methods (2-10) with potentially duplicate names
         var methodCountGen = Gen.Choose(2, 10);
         var methodNameGen = Gen.Elements("GetItem", "CreateItem", "UpdateItem", "DeleteItem", "ListItems");
-        
+
         return Prop.ForAll(
             methodCountGen.ToArbitrary(),
             methodNameGen.ToArbitrary(),
@@ -32,13 +32,13 @@ public class OperationIdPropertyTests
             {
                 // Generate source with multiple methods that could have duplicate names
                 var source = GenerateSourceWithMultipleMethods(methodCount, baseName);
-                
+
                 // Extract all operationIds from the generated OpenAPI spec
                 var operationIds = ExtractAllOperationIds(source);
-                
+
                 // All operationIds should be unique
                 var uniqueIds = operationIds.Distinct().ToList();
-                
+
                 return (operationIds.Count == uniqueIds.Count)
                     .Label($"Expected {operationIds.Count} unique operationIds, but found {uniqueIds.Count} unique out of: [{string.Join(", ", operationIds)}]");
             });
@@ -57,7 +57,7 @@ public class OperationIdPropertyTests
         var methodNameGen = Gen.Elements("GetProduct", "CreateOrder", "UpdateUser", "DeleteItem", "ListCustomers");
         var useAttributeGen = Arb.Generate<bool>();
         var customIdGen = Gen.Elements("customGetOp", "customCreateOp", "customUpdateOp", "customDeleteOp", "customListOp");
-        
+
         return Prop.ForAll(
             methodNameGen.ToArbitrary(),
             useAttributeGen.ToArbitrary(),
@@ -66,13 +66,13 @@ public class OperationIdPropertyTests
             {
                 var source = GenerateSourceWithOperationId(methodName, useAttribute ? customId : null);
                 var operationIds = ExtractAllOperationIds(source);
-                
+
                 if (operationIds.Count == 0)
                     return false.Label("No operationIds found in generated spec");
-                
+
                 var operationId = operationIds.First();
                 var expectedId = useAttribute ? customId : methodName;
-                
+
                 return (operationId == expectedId)
                     .Label($"Expected operationId '{expectedId}', but got '{operationId}'");
             });
@@ -82,15 +82,15 @@ public class OperationIdPropertyTests
     {
         var methods = new List<string>();
         var routes = new List<string>();
-        
+
         for (int i = 0; i < methodCount; i++)
         {
             var route = $"/items{i}/{{id}}";
             routes.Add(route);
-            
+
             // Use the same base name for some methods to test uniqueness
             var methodName = i % 2 == 0 ? baseName : $"{baseName}{i}";
-            
+
             methods.Add($@"
     [LambdaFunction]
     [HttpApi(LambdaHttpMethod.Get, ""{route}"")]
@@ -110,10 +110,10 @@ public class TestFunctions
 
     private string GenerateSourceWithOperationId(string methodName, string customOperationId)
     {
-        var operationIdAttr = customOperationId != null 
+        var operationIdAttr = customOperationId != null
             ? $@"[Oproto.Lambda.OpenApi.Attributes.OpenApiOperationId(""{customOperationId}"")]"
             : "";
-        
+
         return $@"
 using Amazon.Lambda.Annotations;
 using Amazon.Lambda.Annotations.APIGateway;
@@ -131,27 +131,27 @@ public class TestFunctions
     private List<string> ExtractAllOperationIds(string source)
     {
         var operationIds = new List<string>();
-        
+
         try
         {
             var compilation = CompilerHelper.CreateCompilation(source);
             var generator = new OpenApiSpecGenerator();
-            
+
             var driver = CSharpGeneratorDriver.Create(generator);
             driver.RunGeneratorsAndUpdateCompilation(compilation,
                 out var outputCompilation,
                 out var diagnostics);
-            
+
             // Check for errors
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                 return operationIds;
-            
+
             var jsonContent = ExtractOpenApiJson(outputCompilation);
             if (string.IsNullOrEmpty(jsonContent))
                 return operationIds;
-            
+
             using var doc = JsonDocument.Parse(jsonContent);
-            
+
             // Navigate through all paths and operations to collect operationIds
             if (doc.RootElement.TryGetProperty("paths", out var paths))
             {
@@ -162,7 +162,7 @@ public class TestFunctions
                         // Skip non-operation properties like "parameters"
                         if (operation.Name.StartsWith("x-") || operation.Name == "parameters")
                             continue;
-                        
+
                         if (operation.Value.TryGetProperty("operationId", out var operationId))
                         {
                             operationIds.Add(operationId.GetString() ?? "");
@@ -175,7 +175,7 @@ public class TestFunctions
         {
             // Return empty list on error
         }
-        
+
         return operationIds;
     }
 

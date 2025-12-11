@@ -32,39 +32,40 @@ public partial class OpenApiSpecGenerator
                 {
                     var name = param.Attribute("name")?.Value;
                     var description = param.Value.Trim();
-                    if (name != null) documentation.ParameterDescriptions[name] = description;
+                    if (name != null)
+                        documentation.ParameterDescriptions[name] = description;
                 }
 
                 // Get return value description
                 documentation.Returns = members.Element("returns")?.Value.Trim();
-                
+
                 // Get examples from <example> tags
                 foreach (var example in members.Elements("example"))
                 {
                     var exampleInfo = new XmlExampleInfo();
-                    
+
                     // Get the example content (could be in a <code> element or directly)
                     var codeElement = example.Element("code");
-                    exampleInfo.Value = codeElement != null 
-                        ? codeElement.Value.Trim() 
+                    exampleInfo.Value = codeElement != null
+                        ? codeElement.Value.Trim()
                         : example.Value.Trim();
-                    
+
                     // Check for name attribute
                     exampleInfo.Name = example.Attribute("name")?.Value ?? "Example";
-                    
+
                     // Check for request attribute (defaults to false = response example)
                     var requestAttr = example.Attribute("request")?.Value;
-                    exampleInfo.IsRequestExample = requestAttr != null && 
+                    exampleInfo.IsRequestExample = requestAttr != null &&
                         (requestAttr.Equals("true", StringComparison.OrdinalIgnoreCase) ||
                          requestAttr.Equals("1", StringComparison.Ordinal));
-                    
+
                     // Check for status code attribute (defaults to 200)
                     var statusAttr = example.Attribute("statusCode")?.Value;
                     if (int.TryParse(statusAttr, out var statusCode))
                     {
                         exampleInfo.StatusCode = statusCode;
                     }
-                    
+
                     if (!string.IsNullOrEmpty(exampleInfo.Value))
                     {
                         documentation.Examples.Add(exampleInfo);

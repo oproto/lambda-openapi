@@ -28,13 +28,13 @@ public class ExtractOpenApiSpecTaskTests : IDisposable
         // Give GC a chance to release any file handles
         GC.Collect();
         GC.WaitForPendingFinalizers();
-        
+
         // Retry deletion with small delays to handle any lingering locks
         for (var i = 0; i < 3; i++)
         {
             try
             {
-                if (Directory.Exists(_tempDirectory)) 
+                if (Directory.Exists(_tempDirectory))
                     Directory.Delete(_tempDirectory, true);
                 return;
             }

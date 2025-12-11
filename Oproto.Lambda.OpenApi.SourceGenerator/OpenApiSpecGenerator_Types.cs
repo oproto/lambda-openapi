@@ -188,7 +188,8 @@ public partial class OpenApiSpecGenerator
                 .Cast<IOpenApiAny>()
                 .ToList();
 
-            if (memberSymbol != null) ApplySchemaAttributes(schema, memberSymbol);
+            if (memberSymbol != null)
+                ApplySchemaAttributes(schema, memberSymbol);
 
             return schema;
         }
@@ -233,7 +234,8 @@ public partial class OpenApiSpecGenerator
         };
 
         // Apply any attributes after setting default values
-        if (memberSymbol != null) ApplySchemaAttributes(schema, memberSymbol);
+        if (memberSymbol != null)
+            ApplySchemaAttributes(schema, memberSymbol);
 
         return schema;
     }
@@ -334,7 +336,8 @@ public partial class OpenApiSpecGenerator
         {
             case JsonValueKind.Array:
                 var array = new OpenApiArray();
-                foreach (var item in element.EnumerateArray()) array.Add(JsonElementToOpenApiAny(item));
+                foreach (var item in element.EnumerateArray())
+                    array.Add(JsonElementToOpenApiAny(item));
 
                 return array;
 

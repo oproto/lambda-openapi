@@ -29,24 +29,24 @@ public class ServerDefinitionPropertyTests
             "https://dev.example.com",
             "https://localhost:5000",
             "https://api.prod.example.com/v1");
-        
+
         var descriptionGen = Gen.OneOf(
             Gen.Constant((string?)null),
             Gen.Elements("Production server", "Staging server", "Development server", "Local development")
                 .Select(s => (string?)s));
-        
+
         var serverGen = Gen.Zip(serverUrlGen, descriptionGen)
             .Select(t => (Url: t.Item1, Description: t.Item2));
         var serversGen = Gen.ListOf(serverGen)
             .Select(servers => servers.DistinctBy(s => s.Url).Take(3).ToList());
-        
+
         return Prop.ForAll(
             serversGen.ToArbitrary(),
             servers =>
             {
                 var source = GenerateSourceWithServers(servers);
                 var extractedServers = ExtractServers(source);
-                
+
                 if (servers.Count == 0)
                 {
                     // If no servers specified, servers array should be empty or null
@@ -57,9 +57,9 @@ public class ServerDefinitionPropertyTests
                 else
                 {
                     // All specified servers should be present with correct URLs
-                    var allUrlsPresent = servers.All(s => 
+                    var allUrlsPresent = servers.All(s =>
                         extractedServers.Any(es => es.Url == s.Url));
-                    
+
                     // Descriptions should match when provided
                     var descriptionsMatch = servers.All(s =>
                     {
@@ -68,7 +68,7 @@ public class ServerDefinitionPropertyTests
                         if (s.Description == null) return true; // No description expected
                         return extracted.Description == s.Description;
                     });
-                    
+
                     return (allUrlsPresent && descriptionsMatch)
                         .Label($"Expected servers [{string.Join(", ", servers.Select(s => s.Url))}], " +
                                $"but got [{string.Join(", ", extractedServers.Select(s => s.Url))}]");
@@ -86,14 +86,14 @@ public class ServerDefinitionPropertyTests
     public Property NoServerAttribute_OmitsServersFromSpecification()
     {
         var methodNameGen = Gen.Elements("GetProduct", "CreateOrder", "UpdateUser", "DeleteItem");
-        
+
         return Prop.ForAll(
             methodNameGen.ToArbitrary(),
             methodName =>
             {
                 var source = GenerateSourceWithoutServers(methodName);
                 var extractedServers = ExtractServers(source);
-                
+
                 var noServers = extractedServers.Count == 0;
                 return noServers
                     .Label($"Expected no servers when none defined, but got {extractedServers.Count}");
@@ -103,12 +103,12 @@ public class ServerDefinitionPropertyTests
     private static string GenerateSourceWithServers(List<(string Url, string? Description)> servers)
     {
         var serverAttributes = servers.Count > 0
-            ? string.Join("\n", servers.Select(s => 
+            ? string.Join("\n", servers.Select(s =>
                 s.Description != null
                     ? $@"[assembly: Oproto.Lambda.OpenApi.Attributes.OpenApiServer(""{s.Url}"", Description = ""{s.Description}"")]"
                     : $@"[assembly: Oproto.Lambda.OpenApi.Attributes.OpenApiServer(""{s.Url}"")]"))
             : "";
-        
+
         return $@"
 {serverAttributes}
 
@@ -145,24 +145,24 @@ public class TestFunctions
         {
             var compilation = CompilerHelper.CreateCompilation(source);
             var generator = new OpenApiSpecGenerator();
-            
+
             var driver = CSharpGeneratorDriver.Create(generator);
             driver.RunGeneratorsAndUpdateCompilation(compilation,
                 out var outputCompilation,
                 out var diagnostics);
-            
+
             // Check for errors
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                 return new List<(string, string?)>();
-            
+
             var jsonContent = ExtractOpenApiJson(outputCompilation);
             if (string.IsNullOrEmpty(jsonContent))
                 return new List<(string, string?)>();
-            
+
             using var doc = JsonDocument.Parse(jsonContent);
-            
+
             var servers = new List<(string Url, string? Description)>();
-            
+
             if (doc.RootElement.TryGetProperty("servers", out var serversArray))
             {
                 foreach (var server in serversArray.EnumerateArray())
@@ -176,14 +176,14 @@ public class TestFunctions
                     servers.Add((url, description));
                 }
             }
-            
+
             return servers;
         }
         catch
         {
             // Return empty on error
         }
-        
+
         return new List<(string, string?)>();
     }
 

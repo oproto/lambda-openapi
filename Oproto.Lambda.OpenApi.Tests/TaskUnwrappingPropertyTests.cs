@@ -25,17 +25,17 @@ public class TaskUnwrappingPropertyTests
     {
         // Generate random type names for testing
         var typeNameGen = Gen.Elements("string", "int", "bool", "Product", "Order", "Customer");
-        
+
         return Prop.ForAll(typeNameGen.ToArbitrary(), typeName =>
         {
             // Generate source with Task<T> return type
             var taskSource = GenerateSourceWithReturnType($"Task<{typeName}>", typeName);
             var directSource = GenerateSourceWithReturnType(typeName, typeName);
-            
+
             // Compile and generate OpenAPI for both
             var taskSchema = ExtractResponseSchema(taskSource);
             var directSchema = ExtractResponseSchema(directSource);
-            
+
             // The schemas should be equivalent (both should reference the inner type)
             return SchemasAreEquivalent(taskSchema, directSchema)
                 .Label($"Task<{typeName}> schema should equal {typeName} schema");
@@ -52,15 +52,15 @@ public class TaskUnwrappingPropertyTests
     public Property ValueTaskT_UnwrappingPreservesInnerType()
     {
         var typeNameGen = Gen.Elements("string", "int", "bool", "Product", "Order", "Customer");
-        
+
         return Prop.ForAll(typeNameGen.ToArbitrary(), typeName =>
         {
             var valueTaskSource = GenerateSourceWithReturnType($"ValueTask<{typeName}>", typeName);
             var directSource = GenerateSourceWithReturnType(typeName, typeName);
-            
+
             var valueTaskSchema = ExtractResponseSchema(valueTaskSource);
             var directSchema = ExtractResponseSchema(directSource);
-            
+
             return SchemasAreEquivalent(valueTaskSchema, directSchema)
                 .Label($"ValueTask<{typeName}> schema should equal {typeName} schema");
         });
@@ -99,22 +99,22 @@ public class TestFunctions
         {
             var compilation = CompilerHelper.CreateCompilation(source);
             var generator = new OpenApiSpecGenerator();
-            
+
             var driver = CSharpGeneratorDriver.Create(generator);
             driver.RunGeneratorsAndUpdateCompilation(compilation,
                 out var outputCompilation,
                 out var diagnostics);
-            
+
             // Check for errors
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                 return null;
-            
+
             var jsonContent = ExtractOpenApiJson(outputCompilation);
             if (string.IsNullOrEmpty(jsonContent))
                 return null;
-            
+
             using var doc = JsonDocument.Parse(jsonContent);
-            
+
             // Navigate to the response schema
             if (doc.RootElement.TryGetProperty("paths", out var paths) &&
                 paths.TryGetProperty("/items/{id}", out var path) &&
@@ -129,14 +129,14 @@ public class TestFunctions
                 {
                     return schema.Clone();
                 }
-                
+
                 // For void returns (Task without T), there's no content schema
                 if (responses.TryGetProperty("204", out _))
                 {
                     return JsonDocument.Parse("{}").RootElement.Clone();
                 }
             }
-            
+
             return null;
         }
         catch
@@ -180,7 +180,7 @@ public class TestFunctions
             return true;
         if (schema1 == null || schema2 == null)
             return false;
-        
+
         // Compare the JSON representations
         return schema1.Value.GetRawText() == schema2.Value.GetRawText();
     }

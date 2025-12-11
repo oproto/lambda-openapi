@@ -25,7 +25,7 @@ public class TagAssignmentPropertyTests
         var methodNameGen = Gen.Elements("GetProduct", "CreateOrder", "UpdateUser", "DeleteItem", "ListCustomers");
         var tagNamesGen = Gen.ListOf(Gen.Elements("Products", "Orders", "Users", "Admin", "Public"))
             .Select(tags => tags.Distinct().ToList());
-        
+
         return Prop.ForAll(
             methodNameGen.ToArbitrary(),
             tagNamesGen.ToArbitrary(),
@@ -33,7 +33,7 @@ public class TagAssignmentPropertyTests
             {
                 var source = GenerateSourceWithTags(methodName, tagNames);
                 var extractedTags = ExtractOperationTags(source);
-                
+
                 if (tagNames.Count == 0)
                 {
                     // If no tags specified, should default to "Default"
@@ -46,7 +46,7 @@ public class TagAssignmentPropertyTests
                     // All specified tags should be present
                     var allTagsPresent = tagNames.All(t => extractedTags.Contains(t));
                     var correctCount = extractedTags.Count == tagNames.Count;
-                    
+
                     return (allTagsPresent && correctCount)
                         .Label($"Expected tags [{string.Join(", ", tagNames)}], but got [{string.Join(", ", extractedTags)}]");
                 }
@@ -67,7 +67,7 @@ public class TagAssignmentPropertyTests
         var multipleTagsGen = Gen.ListOf(Gen.Elements("Products", "Orders", "Users", "Admin", "Public", "Internal"))
             .Where(tags => tags.Distinct().Count() >= 2)
             .Select(tags => tags.Distinct().Take(4).ToList());
-        
+
         return Prop.ForAll(
             methodNameGen.ToArbitrary(),
             multipleTagsGen.ToArbitrary(),
@@ -75,10 +75,10 @@ public class TagAssignmentPropertyTests
             {
                 var source = GenerateSourceWithTags(methodName, tagNames);
                 var extractedTags = ExtractOperationTags(source);
-                
+
                 // All specified tags should be present
                 var allTagsPresent = tagNames.All(t => extractedTags.Contains(t));
-                
+
                 return allTagsPresent
                     .Label($"Expected all tags [{string.Join(", ", tagNames)}] to be present, but got [{string.Join(", ", extractedTags)}]");
             });
@@ -89,7 +89,7 @@ public class TagAssignmentPropertyTests
         var tagAttributes = tagNames.Count > 0
             ? string.Join("\n    ", tagNames.Select(t => $@"[Oproto.Lambda.OpenApi.Attributes.OpenApiTag(""{t}"")]"))
             : "";
-        
+
         return $@"
 using Amazon.Lambda.Annotations;
 using Amazon.Lambda.Annotations.APIGateway;
@@ -110,22 +110,22 @@ public class TestFunctions
         {
             var compilation = CompilerHelper.CreateCompilation(source);
             var generator = new OpenApiSpecGenerator();
-            
+
             var driver = CSharpGeneratorDriver.Create(generator);
             driver.RunGeneratorsAndUpdateCompilation(compilation,
                 out var outputCompilation,
                 out var diagnostics);
-            
+
             // Check for errors
             if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                 return new List<string>();
-            
+
             var jsonContent = ExtractOpenApiJson(outputCompilation);
             if (string.IsNullOrEmpty(jsonContent))
                 return new List<string>();
-            
+
             using var doc = JsonDocument.Parse(jsonContent);
-            
+
             // Navigate to the first operation and get its tags
             if (doc.RootElement.TryGetProperty("paths", out var paths))
             {
@@ -136,7 +136,7 @@ public class TestFunctions
                         // Skip non-operation properties
                         if (operation.Name.StartsWith("x-") || operation.Name == "parameters")
                             continue;
-                        
+
                         if (operation.Value.TryGetProperty("tags", out var tagsArray))
                         {
                             return tagsArray.EnumerateArray()
@@ -144,7 +144,7 @@ public class TestFunctions
                                 .Where(t => t != null)
                                 .ToList();
                         }
-                        
+
                         return new List<string>();
                     }
                 }
@@ -154,7 +154,7 @@ public class TestFunctions
         {
             // Return empty on error
         }
-        
+
         return new List<string>();
     }
 
