@@ -63,9 +63,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Replaces the class-level `GenerateOpenApiSpecAttribute`
 
 - **AOT Compilation Support**
-  - Build task now supports Native AOT builds via source file parsing
-  - Dual extraction strategy: tries source file first, falls back to reflection
-  - Enable with `EmitCompilerGeneratedFiles=true` in project file
+  - Build task fully supports Native AOT builds without special configuration
+  - Uses `MetadataLoadContext` for dependency-free assembly metadata reading
+  - No need to enable `EmitCompilerGeneratedFiles` - works automatically
 
 - **HTTP Method Support**
   - Added support for PATCH, HEAD, and OPTIONS HTTP methods

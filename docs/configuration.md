@@ -134,48 +134,26 @@ dotnet build -p:SkipOpenApiGeneration=true
 
 ## AOT (Ahead-of-Time) Compilation Support
 
-For Native AOT builds, the standard reflection-based extraction may not work because the assembly cannot be loaded at build time. Oproto Lambda OpenAPI supports AOT builds through source file parsing.
-
-### Enabling AOT-Compatible Extraction
-
-To enable AOT-compatible extraction, you must enable compiler-generated files:
-
-```xml
-<PropertyGroup>
-  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-</PropertyGroup>
-```
-
-When this is enabled, the build task will:
-1. First attempt to parse the generated `OpenApiOutput.g.cs` source file
-2. Fall back to reflection if the source file is not found
+Oproto Lambda OpenAPI fully supports Native AOT builds without any special configuration. The OpenAPI specification is extracted during the Build phase (before AOT compilation), so it works seamlessly with AOT projects.
 
 ### How It Works
 
-The source generator creates a file containing the OpenAPI specification as an assembly attribute:
+The build task runs `AfterTargets="Build"`, which executes before AOT publishing:
 
-```csharp
-[assembly: OpenApiOutput(@"{...json...}", "openapi.json")]
-```
+1. **Build** → IL assembly created with attributes → **OpenAPI extraction runs** → `openapi.json` generated
+2. **Publish** → AOT compiles IL to native binary
 
-With `EmitCompilerGeneratedFiles=true`, this file is written to disk at:
-```
-obj/{Configuration}/{TargetFramework}/generated/Oproto.Lambda.OpenApi.SourceGenerator/
-    Oproto.Lambda.OpenApi.SourceGenerator.OpenApiSpecGenerator/OpenApiOutput.g.cs
-```
-
-The build task parses this file directly, avoiding the need to load the compiled assembly.
+The extraction uses `MetadataLoadContext` to read assembly metadata without loading dependencies, making it compatible with any project configuration.
 
 ### AOT Build Configuration Example
+
+No special configuration is required for AOT projects:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <PublishAot>true</PublishAot>
-    
-    <!-- Required for AOT-compatible OpenAPI extraction -->
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
 
   <ItemGroup>
@@ -183,6 +161,18 @@ The build task parses this file directly, avoiding the need to load the compiled
   </ItemGroup>
 </Project>
 ```
+
+### Optional: Emitting Generated Files for Debugging
+
+If you want to inspect the generated source code for debugging purposes, you can optionally enable compiler-generated file output:
+
+```xml
+<PropertyGroup>
+  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+</PropertyGroup>
+```
+
+This is not required for OpenAPI generation to work - it's purely for debugging the source generator output.
 
 ## Debugging Generated Files
 

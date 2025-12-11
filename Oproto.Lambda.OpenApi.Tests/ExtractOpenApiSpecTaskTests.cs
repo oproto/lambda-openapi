@@ -103,6 +103,11 @@ public class ExtractOpenApiSpecTaskTests : IDisposable
                     emitResult.Diagnostics.Select(d => d.ToString())));
         }
 
+        // Copy the Oproto.Lambda.OpenApi.dll to the temp directory so MetadataLoadContext can find it
+        var openApiDllSource = typeof(Oproto.Lambda.OpenApi.Attributes.OpenApiOutputAttribute).Assembly.Location;
+        var openApiDllDest = Path.Combine(_tempDirectory, "Oproto.Lambda.OpenApi.dll");
+        File.Copy(openApiDllSource, openApiDllDest, true);
+
         // Load assembly from bytes to avoid file locking (diagnostic only)
         var assemblyBytes = File.ReadAllBytes(assemblyPath);
         var loadedAssembly = Assembly.Load(assemblyBytes);

@@ -4,6 +4,13 @@ All notable documentation changes for this project. Use this file to sync docume
 
 ## [Unreleased]
 
+### Changed
+
+#### configuration.md
+- Simplified AOT compilation section - `EmitCompilerGeneratedFiles` is no longer required
+- Updated to reflect that OpenAPI extraction now works automatically with AOT builds using MetadataLoadContext
+- Moved `EmitCompilerGeneratedFiles` documentation to optional debugging section
+
 ### Added
 
 #### attributes.md
