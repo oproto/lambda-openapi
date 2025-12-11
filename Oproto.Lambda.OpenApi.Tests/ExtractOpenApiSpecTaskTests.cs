@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Reflection;
+using System.Runtime.Loader;
 using Microsoft.Build.Framework;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -25,7 +26,28 @@ public class ExtractOpenApiSpecTaskTests : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(_tempDirectory)) Directory.Delete(_tempDirectory, true);
+        // Give GC a chance to release any file handles
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        
+        // Retry deletion with small delays to handle any lingering locks
+        for (var i = 0; i < 3; i++)
+        {
+            try
+            {
+                if (Directory.Exists(_tempDirectory)) 
+                    Directory.Delete(_tempDirectory, true);
+                return;
+            }
+            catch (UnauthorizedAccessException) when (i < 2)
+            {
+                Thread.Sleep(100);
+            }
+            catch (IOException) when (i < 2)
+            {
+                Thread.Sleep(100);
+            }
+        }
     }
 
     [Fact]
@@ -82,9 +104,18 @@ public class ExtractOpenApiSpecTaskTests : IDisposable
                     emitResult.Diagnostics.Select(d => d.ToString())));
         }
 
-        var loadedAssembly = Assembly.LoadFrom(assemblyPath);
-        var attributes = loadedAssembly.GetCustomAttributes(true);
-        foreach (var attr in attributes) Console.WriteLine($"Loaded assembly attribute: {attr.GetType().FullName}");
+        // Load assembly in a collectible context so it can be unloaded and the file released
+        var loadContext = new AssemblyLoadContext("TestContext", isCollectible: true);
+        try
+        {
+            var loadedAssembly = loadContext.LoadFromAssemblyPath(assemblyPath);
+            var attributes = loadedAssembly.GetCustomAttributes(true);
+            foreach (var attr in attributes) Console.WriteLine($"Loaded assembly attribute: {attr.GetType().FullName}");
+        }
+        finally
+        {
+            loadContext.Unload();
+        }
 
 
         var mockBuildEngine = new MockBuildEngine();
