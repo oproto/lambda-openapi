@@ -34,13 +34,16 @@ public partial class OpenApiSpecGenerator
             return null;
 
         // Check for nullable types first, before processing type references
-        if (TryCreateNullableSchema(typeSymbol, memberSymbol, out var nullableSchema)) return nullableSchema;
+        if (TryCreateNullableSchema(typeSymbol, memberSymbol, out var nullableSchema))
+            return nullableSchema;
 
         // Then check for special types like Ulid
-        if (TryCreateSpecialTypeSchema(typeSymbol, out var specialSchema)) return specialSchema;
+        if (TryCreateSpecialTypeSchema(typeSymbol, out var specialSchema))
+            return specialSchema;
 
         // Check for collection types
-        if (TryCreateCollectionSchema(typeSymbol, memberSymbol, out var collectionSchema)) return collectionSchema;
+        if (TryCreateCollectionSchema(typeSymbol, memberSymbol, out var collectionSchema))
+            return collectionSchema;
 
         // If we've already processed this type and it's a complex type, return a reference
         if (!_processedTypes.TryGetValue(typeSymbol, out var count))
@@ -105,7 +108,8 @@ public partial class OpenApiSpecGenerator
         }*/
 
         // Handle simple types (including enums)
-        if (IsSimpleType(typeSymbol)) return CreateSimpleTypeSchema(typeSymbol, memberSymbol);
+        if (IsSimpleType(typeSymbol))
+            return CreateSimpleTypeSchema(typeSymbol, memberSymbol);
 
         // Handle complex types
 
@@ -217,7 +221,8 @@ public partial class OpenApiSpecGenerator
             var itemSchema = CreateSchema(elementType, memberSymbol);
             schema = new OpenApiSchema { Type = "array", Items = itemSchema };
 
-            if (memberSymbol != null) ApplySchemaAttributes(schema, memberSymbol);
+            if (memberSymbol != null)
+                ApplySchemaAttributes(schema, memberSymbol);
 
             return true;
         }

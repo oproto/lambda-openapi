@@ -7,32 +7,30 @@ All notable documentation changes for this project. Use this file to sync docume
 ### Added
 
 #### attributes.md
-- Added documentation for new `OpenApiInfoAttribute` assembly-level attribute for API metadata
-- Added documentation for new `OpenApiSecuritySchemeAttribute` assembly-level attribute
-- Added documentation for `OpenApiSecuritySchemeType` enum (ApiKey, Http, OAuth2, OpenIdConnect)
-- Added documentation for `ApiKeyLocation` enum (Query, Header, Cookie)
-- Added examples for API Key and OAuth2 security scheme configuration
-- Added documentation for new `OpenApiResponseTypeAttribute` method-level attribute
-- Added examples for documenting response types when using IHttpResult
-- Removed documentation for `GenerateOpenApiSpecAttribute` (replaced by `OpenApiInfoAttribute`)
+- Added `OperationId` property documentation to `OpenApiOperationAttribute`
+- Added "Deprecation" subsection explaining both `[OpenApiOperation(Deprecated=true)]` and `[Obsolete]` approaches
+- Added documentation for `OpenApiExampleAttribute` - request/response examples with JSON content
+- Added documentation for `OpenApiResponseHeaderAttribute` - response header documentation
+- Added documentation for `OpenApiServerAttribute` - server URL definitions
+- Added documentation for `OpenApiTagDefinitionAttribute` - tag definitions with descriptions
+- Added documentation for `OpenApiExternalDocsAttribute` - external documentation links
+- Added documentation for `OpenApiOperationIdAttribute` - custom operation IDs
+- Added "Deprecation Support" section explaining `[Obsolete]` attribute detection
+- Reorganized Table of Contents into Assembly-Level, Method-Level, and Property/Parameter sections
+- Added comprehensive usage examples for all new attributes
 
 #### getting-started.md
-- Added "FromServices Parameter Exclusion" section explaining that parameters with `[FromServices]` attribute are automatically excluded from OpenAPI parameters
-- Added "API Gateway Integration" section documenting the `x-amazon-apigateway-integration` extension automatically added to all operations
-- Added "AOT Compatibility" section explaining how to use the library with Native AOT compilation
-- Added "Security Schemes" section with examples for configuring API Key and OAuth2 authentication
-- Added "IHttpResult Return Types" section explaining OpenApiResponseType attribute usage
-- Updated attribute list to include new assembly-level and method-level attributes
-- Removed reference to GenerateOpenApiSpecAttribute
+- Added "Deprecation with [Obsolete]" section
+- Added "Response Headers" section with `[OpenApiResponseHeader]` examples
+- Added "Request and Response Examples" section with `[OpenApiExample]` examples
+- Added "Operation IDs" section with `[OpenApiOperationId]` examples
+- Updated assembly-level attributes list to include `[OpenApiServer]`, `[OpenApiTagDefinition]`, `[OpenApiExternalDocs]`
+- Updated method-level attributes list to include `[OpenApiOperationId]`, `[OpenApiResponseHeader]`, `[OpenApiExample]`, `[OpenApiExternalDocs]`
 
-#### configuration.md
-- Added "AOT Configuration" section documenting the `EmitCompilerGeneratedFiles` MSBuild property requirement for AOT scenarios
-- Added explanation of the dual extraction strategy (source file parsing vs reflection fallback)
-
-### Removed
+### Changed
 
 #### attributes.md
-- Removed `GenerateOpenApiSpecAttribute` documentation (replaced by `OpenApiInfoAttribute`)
+- Updated Table of Contents with all new attributes organized by target type
 
 ## Format
 

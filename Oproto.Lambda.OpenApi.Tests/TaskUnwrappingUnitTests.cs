@@ -61,7 +61,7 @@ public class TestFunctions
 
         var compilation = CompilerHelper.CreateCompilation(source);
         var generator = new OpenApiSpecGenerator();
-        
+
         var driver = CSharpGeneratorDriver.Create(generator);
         driver.RunGeneratorsAndUpdateCompilation(compilation,
             out var outputCompilation,
@@ -70,10 +70,10 @@ public class TestFunctions
         Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
 
         var jsonContent = ExtractOpenApiJson(outputCompilation);
-        
+
         // Debug: output the full JSON for inspection
         System.Diagnostics.Debug.WriteLine($"Generated OpenAPI JSON:\n{jsonContent}");
-        
+
         using var doc = JsonDocument.Parse(jsonContent);
         var root = doc.RootElement;
 
@@ -81,21 +81,21 @@ public class TestFunctions
             .GetProperty("/items/{id}")
             .GetProperty("get")
             .GetProperty("responses");
-        
+
         // The unwrapped Task<string> should produce a 200 response with string schema
-        Assert.True(responses.TryGetProperty("200", out var response200), 
+        Assert.True(responses.TryGetProperty("200", out var response200),
             $"Expected 200 response. Full JSON: {jsonContent}");
-        
+
         var schema = response200
             .GetProperty("content")
             .GetProperty("application/json")
             .GetProperty("schema");
 
         // Should be a string type, not a Task wrapper
-        Assert.True(schema.TryGetProperty("type", out var typeValue), 
+        Assert.True(schema.TryGetProperty("type", out var typeValue),
             $"Expected schema to have 'type' property. Schema: {schema.GetRawText()}");
         Assert.Equal("string", typeValue.GetString());
-        
+
         // Should NOT contain "Task" as a schema reference
         Assert.DoesNotContain("\"$ref\": \"#/components/schemas/Task\"", jsonContent);
     }
@@ -128,7 +128,7 @@ public class Order
 
         var compilation = CompilerHelper.CreateCompilation(source);
         var generator = new OpenApiSpecGenerator();
-        
+
         var driver = CSharpGeneratorDriver.Create(generator);
         driver.RunGeneratorsAndUpdateCompilation(compilation,
             out var outputCompilation,
@@ -157,7 +157,7 @@ public class Order
         else if (schema.TryGetProperty("allOf", out var allOf))
         {
             var refs = allOf.EnumerateArray().ToList();
-            Assert.Contains(refs, r => r.TryGetProperty("$ref", out var rf) && 
+            Assert.Contains(refs, r => r.TryGetProperty("$ref", out var rf) &&
                 rf.GetString() == "#/components/schemas/Order");
         }
         else
@@ -168,7 +168,7 @@ public class Order
             Assert.True(props.TryGetProperty("CustomerName", out _));
             Assert.True(props.TryGetProperty("Total", out _));
         }
-        
+
         // Should NOT contain "Task" as a schema reference
         Assert.DoesNotContain("\"$ref\": \"#/components/schemas/Task\"", jsonContent);
     }
@@ -194,7 +194,7 @@ public class TestFunctions
 
         var compilation = CompilerHelper.CreateCompilation(source);
         var generator = new OpenApiSpecGenerator();
-        
+
         var driver = CSharpGeneratorDriver.Create(generator);
         driver.RunGeneratorsAndUpdateCompilation(compilation,
             out var outputCompilation,
@@ -214,7 +214,7 @@ public class TestFunctions
         // Should have 204 No Content, not 200 with Task schema
         Assert.True(responses.TryGetProperty("204", out var noContentResponse));
         Assert.Equal("No Content", noContentResponse.GetProperty("description").GetString());
-        
+
         // Should NOT have a 200 response with content
         Assert.False(responses.TryGetProperty("200", out _));
     }
@@ -246,7 +246,7 @@ public class Product
 
         var compilation = CompilerHelper.CreateCompilation(source);
         var generator = new OpenApiSpecGenerator();
-        
+
         var driver = CSharpGeneratorDriver.Create(generator);
         driver.RunGeneratorsAndUpdateCompilation(compilation,
             out var outputCompilation,
@@ -275,18 +275,18 @@ public class Product
         else if (schema.TryGetProperty("allOf", out var allOf))
         {
             var refs = allOf.EnumerateArray().ToList();
-            Assert.Contains(refs, r => r.TryGetProperty("$ref", out var rf) && 
+            Assert.Contains(refs, r => r.TryGetProperty("$ref", out var rf) &&
                 rf.GetString() == "#/components/schemas/Product");
         }
         else
         {
             // Inline object schema - verify it has the expected properties
-            Assert.True(schema.TryGetProperty("properties", out var props), 
+            Assert.True(schema.TryGetProperty("properties", out var props),
                 $"Expected schema to have properties. Schema: {schema.GetRawText()}");
             Assert.True(props.TryGetProperty("Id", out _));
             Assert.True(props.TryGetProperty("Name", out _));
         }
-        
+
         // Should NOT contain "ValueTask" as a schema reference
         Assert.DoesNotContain("\"$ref\": \"#/components/schemas/ValueTask\"", jsonContent);
     }
@@ -317,7 +317,7 @@ public class Item
 
         var compilation = CompilerHelper.CreateCompilation(source);
         var generator = new OpenApiSpecGenerator();
-        
+
         var driver = CSharpGeneratorDriver.Create(generator);
         driver.RunGeneratorsAndUpdateCompilation(compilation,
             out var outputCompilation,
@@ -346,13 +346,13 @@ public class Item
         else if (schema.TryGetProperty("allOf", out var allOf))
         {
             var refs = allOf.EnumerateArray().ToList();
-            Assert.Contains(refs, r => r.TryGetProperty("$ref", out var rf) && 
+            Assert.Contains(refs, r => r.TryGetProperty("$ref", out var rf) &&
                 rf.GetString() == "#/components/schemas/Item");
         }
         else
         {
             // Inline object schema - verify it has the expected properties
-            Assert.True(schema.TryGetProperty("properties", out var props), 
+            Assert.True(schema.TryGetProperty("properties", out var props),
                 $"Expected schema to have properties. Schema: {schema.GetRawText()}");
             Assert.True(props.TryGetProperty("Id", out _));
             Assert.True(props.TryGetProperty("Name", out _));

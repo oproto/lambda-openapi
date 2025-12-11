@@ -518,7 +518,7 @@ public class OpenApiGeneratorTests
         // OpenApiSecuritySchemeAttribute is present. Without the attribute,
         // no security schemes are defined in Components.
         Assert.True(
-            document.Components.SecuritySchemes == null || 
+            document.Components.SecuritySchemes == null ||
             document.Components.SecuritySchemes.Count == 0,
             "Security schemes should not be defined without OpenApiSecuritySchemeAttribute");
     }
