@@ -10,6 +10,8 @@
     <Message Text="Starting OpenAPI Generation" Importance="high"/>
     <ExtractOpenApiSpecTask
       AssemblyPath="$(TargetDir)$(TargetFileName)"
-      OutputPath="$(ProjectDir)openapi.json"/>
+      OutputPath="$(ProjectDir)openapi.json"
+      IntermediateOutputPath="$(IntermediateOutputPath)"
+      CompilerGeneratedFilesOutputPath="$(CompilerGeneratedFilesOutputPath)"/>
   </Target>
 </Project>

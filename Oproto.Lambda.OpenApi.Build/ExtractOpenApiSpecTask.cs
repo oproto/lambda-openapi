@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -19,6 +20,12 @@ public class ExtractOpenApiSpecTask : Task
     /// Used for AOT-compatible extraction from source files.
     /// </summary>
     public string IntermediateOutputPath { get; set; }
+    
+    /// <summary>
+    /// Optional path set by CompilerGeneratedFilesOutputPath MSBuild property.
+    /// When EmitCompilerGeneratedFiles=true, this is where generated files are written.
+    /// </summary>
+    public string CompilerGeneratedFilesOutputPath { get; set; }
 
     public override bool Execute()
     {
@@ -98,6 +105,31 @@ public class ExtractOpenApiSpecTask : Task
     /// </summary>
     private string FindGeneratedSourceFile()
     {
+        // If CompilerGeneratedFilesOutputPath is set, check there first
+        if (!string.IsNullOrEmpty(CompilerGeneratedFilesOutputPath))
+        {
+            var customPaths = new[]
+            {
+                Path.Combine(CompilerGeneratedFilesOutputPath, 
+                    "Oproto.Lambda.OpenApi.SourceGenerator",
+                    "Oproto.Lambda.OpenApi.SourceGenerator.OpenApiSpecGenerator",
+                    "OpenApiOutput.g.cs"),
+                Path.Combine(CompilerGeneratedFilesOutputPath,
+                    "Oproto.Lambda.OpenApi.SourceGenerator",
+                    "OpenApiSpecGenerator",
+                    "OpenApiOutput.g.cs"),
+            };
+            
+            foreach (var path in customPaths)
+            {
+                Log.LogMessage(MessageImportance.Low, $"Looking for generated file at: {path}");
+                if (File.Exists(path))
+                {
+                    return path;
+                }
+            }
+        }
+        
         // Build possible paths to the generated file
         var possiblePaths = new[]
         {
@@ -150,8 +182,16 @@ public class ExtractOpenApiSpecTask : Task
             objDir = Path.Combine(projectDir, "obj");
         }
 
-        // Generated files are in obj/GeneratedFiles/
-        var path = Path.Combine(objDir, "GeneratedFiles", generatorName, generatorTypeName, fileName);
+        // Generated files can be in obj/Generated/ or obj/GeneratedFiles/ depending on SDK version
+        var pathGenerated = Path.Combine(objDir, "Generated", generatorName, generatorTypeName, fileName);
+        var pathGeneratedFiles = Path.Combine(objDir, "GeneratedFiles", generatorName, generatorTypeName, fileName);
+        
+        Log.LogMessage(MessageImportance.Low, $"Looking for generated file at: {pathGenerated}");
+        Log.LogMessage(MessageImportance.Low, $"Looking for generated file at: {pathGeneratedFiles}");
+        
+        // Return whichever exists
+        if (File.Exists(pathGenerated)) return pathGenerated;
+        var path = pathGeneratedFiles;
         Log.LogMessage(MessageImportance.Low, $"Looking for generated file at: {path}");
         return path;
     }
@@ -199,37 +239,65 @@ public class ExtractOpenApiSpecTask : Task
     /// <summary>
     /// Attempts to extract the OpenAPI JSON via reflection.
     /// This is the fallback method for non-AOT scenarios.
+    /// Uses MetadataLoadContext to read metadata without loading dependencies.
     /// </summary>
     private string TryExtractViaReflection()
     {
         try
         {
-            // Read assembly bytes into memory to avoid file locking
-            // This allows the file to be deleted after the task completes
-            var assemblyBytes = File.ReadAllBytes(AssemblyPath);
-            var assembly = Assembly.Load(assemblyBytes);
-            var attributes = assembly.GetCustomAttributes();
-
-            // Find the attribute by name without using type comparison
-            var attribute = attributes
-                .FirstOrDefault(a => a.GetType().FullName == "Oproto.Lambda.OpenApi.Attributes.OpenApiOutputAttribute");
-
-            if (attribute == null)
+            var assemblyDir = Path.GetDirectoryName(AssemblyPath);
+            Log.LogMessage(MessageImportance.High, $"Trying reflection extraction from: {assemblyDir}");
+            
+            // Collect all DLLs in the output directory for the resolver
+            var assemblyPaths = new List<string> { AssemblyPath };
+            if (assemblyDir != null)
             {
-                Log.LogMessage(MessageImportance.Low,
-                    $"No OpenApiOutput attribute found in assembly via reflection.");
+                assemblyPaths.AddRange(Directory.GetFiles(assemblyDir, "*.dll"));
+            }
+            
+            // Add core library path
+            var coreAssemblyPath = typeof(object).Assembly.Location;
+            var coreDir = Path.GetDirectoryName(coreAssemblyPath);
+            if (coreDir != null)
+            {
+                assemblyPaths.AddRange(Directory.GetFiles(coreDir, "*.dll"));
+            }
+            
+            var resolver = new PathAssemblyResolver(assemblyPaths.Distinct());
+            using var mlc = new MetadataLoadContext(resolver);
+            
+            var assembly = mlc.LoadFromAssemblyPath(AssemblyPath);
+            
+            // Find the OpenApiOutput attribute
+            var attributeData = assembly.CustomAttributes
+                .FirstOrDefault(a => a.AttributeType.FullName == "Oproto.Lambda.OpenApi.Attributes.OpenApiOutputAttribute");
+
+            if (attributeData == null)
+            {
+                Log.LogMessage(MessageImportance.High,
+                    "No OpenApiOutput attribute found in assembly via MetadataLoadContext.");
                 return null;
             }
 
-            var json = attribute.GetType().GetProperty("Specification")?.GetValue(attribute) as string;
-            Log.LogMessage(MessageImportance.Low,
-                "Successfully extracted JSON via reflection.");
-            return json;
+            // Get the first constructor argument (the JSON specification)
+            if (attributeData.ConstructorArguments.Count > 0)
+            {
+                var json = attributeData.ConstructorArguments[0].Value as string;
+                Log.LogMessage(MessageImportance.High,
+                    "Successfully extracted JSON via MetadataLoadContext.");
+                return json;
+            }
+            
+            Log.LogMessage(MessageImportance.High,
+                "OpenApiOutput attribute found but no constructor arguments.");
+            return null;
         }
         catch (Exception ex)
         {
-            Log.LogMessage(MessageImportance.Low,
+            Log.LogMessage(MessageImportance.High,
                 $"Reflection extraction failed: {ex.Message}");
+            Log.LogMessage(MessageImportance.High,
+                $"Stack trace: {ex.StackTrace}");
             return null;
         }
     }

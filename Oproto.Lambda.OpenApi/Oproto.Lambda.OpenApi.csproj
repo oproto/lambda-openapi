@@ -38,13 +38,28 @@
           Condition="Exists('..\Oproto.Lambda.OpenApi.SourceGenerator\bin\$(Configuration)\netstandard2.0\Microsoft.OpenApi.dll')" />
   </ItemGroup>
 
-  <!-- Bundle the build task -->
+  <!-- Bundle the build task and its dependencies -->
   <ItemGroup>
     <None Include="..\Oproto.Lambda.OpenApi.Build\bin\$(Configuration)\netstandard2.0\Oproto.Lambda.OpenApi.Build.dll" 
           Pack="true" 
           PackagePath="build" 
           Visible="false" 
           Condition="Exists('..\Oproto.Lambda.OpenApi.Build\bin\$(Configuration)\netstandard2.0\Oproto.Lambda.OpenApi.Build.dll')" />
+    <None Include="..\Oproto.Lambda.OpenApi.Build\bin\$(Configuration)\netstandard2.0\System.Reflection.MetadataLoadContext.dll" 
+          Pack="true" 
+          PackagePath="build" 
+          Visible="false" 
+          Condition="Exists('..\Oproto.Lambda.OpenApi.Build\bin\$(Configuration)\netstandard2.0\System.Reflection.MetadataLoadContext.dll')" />
+    <None Include="..\Oproto.Lambda.OpenApi.Build\bin\$(Configuration)\netstandard2.0\System.Reflection.Metadata.dll" 
+          Pack="true" 
+          PackagePath="build" 
+          Visible="false" 
+          Condition="Exists('..\Oproto.Lambda.OpenApi.Build\bin\$(Configuration)\netstandard2.0\System.Reflection.Metadata.dll')" />
+    <None Include="..\Oproto.Lambda.OpenApi.Build\bin\$(Configuration)\netstandard2.0\System.Collections.Immutable.dll" 
+          Pack="true" 
+          PackagePath="build" 
+          Visible="false" 
+          Condition="Exists('..\Oproto.Lambda.OpenApi.Build\bin\$(Configuration)\netstandard2.0\System.Collections.Immutable.dll')" />
   </ItemGroup>
 
   <!-- Include build props and targets -->
