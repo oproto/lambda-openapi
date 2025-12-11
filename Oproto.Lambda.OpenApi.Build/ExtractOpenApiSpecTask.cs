@@ -20,7 +20,7 @@ public class ExtractOpenApiSpecTask : Task
     /// Used for AOT-compatible extraction from source files.
     /// </summary>
     public string IntermediateOutputPath { get; set; }
-    
+
     /// <summary>
     /// Optional path set by CompilerGeneratedFilesOutputPath MSBuild property.
     /// When EmitCompilerGeneratedFiles=true, this is where generated files are written.
@@ -110,7 +110,7 @@ public class ExtractOpenApiSpecTask : Task
         {
             var customPaths = new[]
             {
-                Path.Combine(CompilerGeneratedFilesOutputPath, 
+                Path.Combine(CompilerGeneratedFilesOutputPath,
                     "Oproto.Lambda.OpenApi.SourceGenerator",
                     "Oproto.Lambda.OpenApi.SourceGenerator.OpenApiSpecGenerator",
                     "OpenApiOutput.g.cs"),
@@ -119,7 +119,7 @@ public class ExtractOpenApiSpecTask : Task
                     "OpenApiSpecGenerator",
                     "OpenApiOutput.g.cs"),
             };
-            
+
             foreach (var path in customPaths)
             {
                 Log.LogMessage(MessageImportance.Low, $"Looking for generated file at: {path}");
@@ -129,7 +129,7 @@ public class ExtractOpenApiSpecTask : Task
                 }
             }
         }
-        
+
         // Build possible paths to the generated file
         var possiblePaths = new[]
         {
@@ -185,10 +185,10 @@ public class ExtractOpenApiSpecTask : Task
         // Generated files can be in obj/Generated/ or obj/GeneratedFiles/ depending on SDK version
         var pathGenerated = Path.Combine(objDir, "Generated", generatorName, generatorTypeName, fileName);
         var pathGeneratedFiles = Path.Combine(objDir, "GeneratedFiles", generatorName, generatorTypeName, fileName);
-        
+
         Log.LogMessage(MessageImportance.Low, $"Looking for generated file at: {pathGenerated}");
         Log.LogMessage(MessageImportance.Low, $"Looking for generated file at: {pathGeneratedFiles}");
-        
+
         // Return whichever exists
         if (File.Exists(pathGenerated)) return pathGenerated;
         var path = pathGeneratedFiles;
@@ -247,14 +247,14 @@ public class ExtractOpenApiSpecTask : Task
         {
             var assemblyDir = Path.GetDirectoryName(AssemblyPath);
             Log.LogMessage(MessageImportance.High, $"Trying reflection extraction from: {assemblyDir}");
-            
+
             // Collect all DLLs in the output directory for the resolver
             var assemblyPaths = new List<string> { AssemblyPath };
             if (assemblyDir != null)
             {
                 assemblyPaths.AddRange(Directory.GetFiles(assemblyDir, "*.dll"));
             }
-            
+
             // Add core library path
             var coreAssemblyPath = typeof(object).Assembly.Location;
             var coreDir = Path.GetDirectoryName(coreAssemblyPath);
@@ -262,12 +262,12 @@ public class ExtractOpenApiSpecTask : Task
             {
                 assemblyPaths.AddRange(Directory.GetFiles(coreDir, "*.dll"));
             }
-            
+
             var resolver = new PathAssemblyResolver(assemblyPaths.Distinct());
             using var mlc = new MetadataLoadContext(resolver);
-            
+
             var assembly = mlc.LoadFromAssemblyPath(AssemblyPath);
-            
+
             // Find the OpenApiOutput attribute
             var attributeData = assembly.CustomAttributes
                 .FirstOrDefault(a => a.AttributeType.FullName == "Oproto.Lambda.OpenApi.Attributes.OpenApiOutputAttribute");
@@ -287,7 +287,7 @@ public class ExtractOpenApiSpecTask : Task
                     "Successfully extracted JSON via MetadataLoadContext.");
                 return json;
             }
-            
+
             Log.LogMessage(MessageImportance.High,
                 "OpenApiOutput attribute found but no constructor arguments.");
             return null;
