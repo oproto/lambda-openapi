@@ -17,7 +17,7 @@
     <Product>Oproto Lambda OpenAPI Generator</Product>
     <Copyright>Copyright © 2025 Oproto Inc</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/oproto/lambda-openapi</PackageProjectUrl>
+    <PackageProjectUrl>https://lambdaopenapi.dev</PackageProjectUrl>
     <RepositoryUrl>https://github.com/oproto/lambda-openapi</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>openapi;swagger;aws;lambda;source-generator;api-documentation</PackageTags>
