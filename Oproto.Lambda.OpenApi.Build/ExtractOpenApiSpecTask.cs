@@ -204,7 +204,10 @@ public class ExtractOpenApiSpecTask : Task
     {
         try
         {
-            var assembly = Assembly.LoadFrom(AssemblyPath);
+            // Read assembly bytes into memory to avoid file locking
+            // This allows the file to be deleted after the task completes
+            var assemblyBytes = File.ReadAllBytes(AssemblyPath);
+            var assembly = Assembly.Load(assemblyBytes);
             var attributes = assembly.GetCustomAttributes();
 
             // Find the attribute by name without using type comparison
