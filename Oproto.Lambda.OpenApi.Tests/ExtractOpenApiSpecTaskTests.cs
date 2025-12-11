@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Reflection;
-using System.Runtime.Loader;
 using Microsoft.Build.Framework;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -104,18 +103,11 @@ public class ExtractOpenApiSpecTaskTests : IDisposable
                     emitResult.Diagnostics.Select(d => d.ToString())));
         }
 
-        // Load assembly in a collectible context so it can be unloaded and the file released
-        var loadContext = new AssemblyLoadContext("TestContext", isCollectible: true);
-        try
-        {
-            var loadedAssembly = loadContext.LoadFromAssemblyPath(assemblyPath);
-            var attributes = loadedAssembly.GetCustomAttributes(true);
-            foreach (var attr in attributes) Console.WriteLine($"Loaded assembly attribute: {attr.GetType().FullName}");
-        }
-        finally
-        {
-            loadContext.Unload();
-        }
+        // Load assembly from bytes to avoid file locking (diagnostic only)
+        var assemblyBytes = File.ReadAllBytes(assemblyPath);
+        var loadedAssembly = Assembly.Load(assemblyBytes);
+        var attributes = loadedAssembly.GetCustomAttributes(true);
+        foreach (var attr in attributes) Console.WriteLine($"Loaded assembly attribute: {attr.GetType().FullName}");
 
 
         var mockBuildEngine = new MockBuildEngine();
