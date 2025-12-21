@@ -1,0 +1,14 @@
+{
+  "name": "Not an OpenAPI spec",
+  "version": "1.0.0",
+  "data": {
+    "items": [
+      { "id": 1, "value": "test" },
+      { "id": 2, "value": "example" }
+    ]
+  },
+  "settings": {
+    "enabled": true,
+    "timeout": 30
+  }
+}

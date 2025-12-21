@@ -1,0 +1,25 @@
+{
+  "info": {
+    "title": "Merged API",
+    "version": "1.0.0",
+    "description": "A merged API specification"
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com",
+      "description": "Production"
+    }
+  ],
+  "sources": [
+    {
+      "path": "../valid/simple-api.json",
+      "name": "SimpleAPI"
+    },
+    {
+      "path": "../valid/with-tags.json",
+      "name": "TagsAPI"
+    }
+  ],
+  "output": "merged-output.json",
+  "schemaConflict": "rename"
+}

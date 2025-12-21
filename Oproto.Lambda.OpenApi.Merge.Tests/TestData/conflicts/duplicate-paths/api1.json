@@ -1,0 +1,31 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "API 1 with Duplicate Path",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/shared/resource": {
+      "get": {
+        "operationId": "getSharedResource1",
+        "summary": "Get shared resource from API 1",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api1/unique": {
+      "get": {
+        "operationId": "getApi1Unique",
+        "summary": "Unique endpoint in API 1",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    }
+  }
+}

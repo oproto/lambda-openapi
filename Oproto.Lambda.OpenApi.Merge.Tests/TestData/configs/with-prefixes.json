@@ -1,0 +1,33 @@
+{
+  "info": {
+    "title": "Prefixed Merged API",
+    "version": "2.0.0",
+    "description": "A merged API with path and operationId prefixes"
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com/v2",
+      "description": "Production v2"
+    },
+    {
+      "url": "https://staging.example.com/v2",
+      "description": "Staging"
+    }
+  ],
+  "sources": [
+    {
+      "path": "../valid/simple-api.json",
+      "name": "Items",
+      "pathPrefix": "/items-service",
+      "operationIdPrefix": "items_"
+    },
+    {
+      "path": "../valid/with-schemas.json",
+      "name": "Products",
+      "pathPrefix": "/products-service",
+      "operationIdPrefix": "products_"
+    }
+  ],
+  "output": "merged-prefixed.json",
+  "schemaConflict": "first-wins"
+}

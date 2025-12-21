@@ -1,0 +1,3 @@
+This is not a JSON file.
+It contains plain text that cannot be parsed as JSON.
+The merge tool should fail gracefully when encountering this file.

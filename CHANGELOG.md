@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-12-20
+
+### Added
+
+- **OpenAPI Merge Tool**
+  - New `Oproto.Lambda.OpenApi.Merge` library for programmatic OpenAPI specification merging
+  - New `Oproto.Lambda.OpenApi.Merge.Tool` CLI tool for command-line merging
+  - Merge multiple OpenAPI specifications into a single unified document
+  - Path prefix support for namespacing APIs from different services
+  - Operation ID prefix support for ensuring unique operation IDs
+  - Schema conflict resolution strategies: `rename`, `first-wins`, `fail`
+  - Automatic schema deduplication for identical schemas
+  - Automatic `$ref` reference rewriting when schemas are renamed
+  - Configuration file support for complex merge scenarios
+  - Detailed warnings for path conflicts, schema conflicts, and operation ID conflicts
+  - Verbose output mode for debugging merge operations
+
+- **New Packages**
+  - `Oproto.Lambda.OpenApi.Merge` - Core merge library (netstandard2.0)
+  - `Oproto.Lambda.OpenApi.Merge.Tool` - .NET CLI tool (net8.0)
+
+- **Documentation**
+  - New `docs/merge-tool.md` with comprehensive merge tool documentation
+  - Updated README.md with merge tool overview and quick start
+
 ## [1.0.0] - 2025-12-10
 
 ### Added
