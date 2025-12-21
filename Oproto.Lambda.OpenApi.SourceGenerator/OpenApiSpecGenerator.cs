@@ -176,17 +176,22 @@ using Oproto.Lambda.OpenApi.Attributes;
 
         if (validDocs.Count == 1)
         {
-            validDocs[0]!.Info = apiInfo;
+            var doc = validDocs[0]!;
+            doc.Info = apiInfo;
             if (tagDefinitions.Count > 0)
             {
-                validDocs[0]!.Tags = tagDefinitions;
+                doc.Tags = tagDefinitions;
             }
             if (serverDefinitions.Count > 0)
             {
-                validDocs[0]!.Servers = serverDefinitions;
+                doc.Servers = serverDefinitions;
             }
-            validDocs[0]!.ExternalDocs = externalDocs;
-            return validDocs[0]!;
+            doc.ExternalDocs = externalDocs;
+            
+            // Normalize paths to ensure they start with /
+            NormalizePaths(doc);
+            
+            return doc;
         }
 
         var mergedDoc = new OpenApiDocument
@@ -203,12 +208,16 @@ using Oproto.Lambda.OpenApi.Attributes;
             // Merge paths
             if (doc.Paths != null)
                 foreach (var path in doc.Paths)
-                    if (!mergedDoc.Paths.ContainsKey(path.Key))
-                        mergedDoc.Paths[path.Key] = path.Value;
+                {
+                    // Normalize path to ensure it starts with /
+                    var normalizedPath = path.Key.StartsWith("/") ? path.Key : "/" + path.Key;
+                    if (!mergedDoc.Paths.ContainsKey(normalizedPath))
+                        mergedDoc.Paths[normalizedPath] = path.Value;
                     else
                         // Merge operations for existing paths
                         foreach (var operation in path.Value.Operations)
-                            mergedDoc.Paths[path.Key].Operations[operation.Key] = operation.Value;
+                            mergedDoc.Paths[normalizedPath].Operations[operation.Key] = operation.Value;
+                }
 
             // Merge components
             if (doc.Components?.Schemas != null)
@@ -221,6 +230,26 @@ using Oproto.Lambda.OpenApi.Attributes;
         }
 
         return mergedDoc;
+    }
+
+    /// <summary>
+    /// Normalizes all paths in an OpenAPI document to ensure they start with /.
+    /// </summary>
+    private static void NormalizePaths(OpenApiDocument document)
+    {
+        if (document.Paths == null || document.Paths.Count == 0)
+            return;
+
+        var pathsToNormalize = document.Paths
+            .Where(p => !p.Key.StartsWith("/"))
+            .ToList();
+
+        foreach (var path in pathsToNormalize)
+        {
+            var normalizedKey = "/" + path.Key;
+            document.Paths.Remove(path.Key);
+            document.Paths[normalizedKey] = path.Value;
+        }
     }
 
     /// <summary>
@@ -1035,7 +1064,7 @@ using Oproto.Lambda.OpenApi.Attributes;
             }
 
             // Add or merge the path into the document
-            var routePath = endpoint.Route;
+            var routePath = endpoint.Route.StartsWith("/") ? endpoint.Route : "/" + endpoint.Route;
             if (!document.Paths.ContainsKey(routePath))
                 document.Paths.Add(routePath, path);
             else

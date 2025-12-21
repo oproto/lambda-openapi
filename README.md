@@ -20,6 +20,35 @@ A .NET source generator that automatically creates OpenAPI specifications from A
 - 🎯 **Type-Safe**: Leverages C# type system for accurate schemas
 - ⚡ **AOT Compatible**: Works with Native AOT compilation
 
+## OpenAPI Merge Tool
+
+The ecosystem also includes a powerful merge tool for combining multiple OpenAPI specifications into a single unified document. This is ideal for microservice architectures where each service generates its own OpenAPI spec.
+
+### Installation
+
+```bash
+# Install as a global tool
+dotnet tool install -g Oproto.Lambda.OpenApi.Merge.Tool
+
+# Or install as a local tool
+dotnet new tool-manifest
+dotnet tool install Oproto.Lambda.OpenApi.Merge.Tool
+```
+
+### Quick Start
+
+```bash
+# Merge multiple specs with CLI arguments
+dotnet openapi-merge merge --title "My API" --version "1.0.0" -o merged.json api1.json api2.json
+
+# Or use a configuration file
+dotnet openapi-merge merge --config merge.config.json
+```
+
+For detailed documentation, see [Merge Tool Documentation](docs/merge-tool.md).
+
+---
+
 ## Requirements
 
 - .NET 6.0 or later (compatible with .NET 6, 7, 8, 9, 10+)
@@ -60,6 +89,7 @@ public async Task<APIGatewayProxyResponse> GetUser(
 - [Getting Started Guide](docs/getting-started.md)
 - [Attribute Reference](docs/attributes.md)
 - [Configuration Options](docs/configuration.md)
+- [Merge Tool](docs/merge-tool.md)
 - [Examples](Oproto.Lambda.OpenApi.Examples/)
 - [Changelog](CHANGELOG.md)
 

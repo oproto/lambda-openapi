@@ -1,0 +1,13 @@
+{
+  "servers": [
+    {
+      "url": "https://api.example.com"
+    }
+  ],
+  "sources": [
+    {
+      "path": "../valid/simple-api.json"
+    }
+  ],
+  "output": "merged.json"
+}

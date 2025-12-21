@@ -11,6 +11,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi", "Op
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi.Examples", "Oproto.Lambda.OpenApi.Examples\Oproto.Lambda.OpenApi.Examples.csproj", "{EDF2388A-EB5D-4E8F-BD66-11CC1DA38C44}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi.Merge", "Oproto.Lambda.OpenApi.Merge\Oproto.Lambda.OpenApi.Merge.csproj", "{F90F0C50-36D6-4266-9186-D84002EB9464}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi.Merge.Tool", "Oproto.Lambda.OpenApi.Merge.Tool\Oproto.Lambda.OpenApi.Merge.Tool.csproj", "{B322F702-B87D-4785-B638-4BBAC83B7B54}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi.Merge.Tests", "Oproto.Lambda.OpenApi.Merge.Tests\Oproto.Lambda.OpenApi.Merge.Tests.csproj", "{B63B2424-1484-422D-8B23-CE73F867583C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,5 +43,17 @@ Global
 		{EDF2388A-EB5D-4E8F-BD66-11CC1DA38C44}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EDF2388A-EB5D-4E8F-BD66-11CC1DA38C44}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EDF2388A-EB5D-4E8F-BD66-11CC1DA38C44}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F90F0C50-36D6-4266-9186-D84002EB9464}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F90F0C50-36D6-4266-9186-D84002EB9464}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F90F0C50-36D6-4266-9186-D84002EB9464}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F90F0C50-36D6-4266-9186-D84002EB9464}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B322F702-B87D-4785-B638-4BBAC83B7B54}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B322F702-B87D-4785-B638-4BBAC83B7B54}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B322F702-B87D-4785-B638-4BBAC83B7B54}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B322F702-B87D-4785-B638-4BBAC83B7B54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B63B2424-1484-422D-8B23-CE73F867583C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B63B2424-1484-422D-8B23-CE73F867583C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B63B2424-1484-422D-8B23-CE73F867583C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B63B2424-1484-422D-8B23-CE73F867583C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
