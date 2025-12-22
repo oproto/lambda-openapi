@@ -24,6 +24,10 @@ A .NET source generator that automatically creates OpenAPI specifications from A
 
 The ecosystem also includes a powerful merge tool for combining multiple OpenAPI specifications into a single unified document. This is ideal for microservice architectures where each service generates its own OpenAPI spec.
 
+## Project Website and Documentation
+
+Documentation, examples and more are located on [LambdaOpenApi](https://lambdaopenapi.dev) website.
+
 ### Installation
 
 ```bash
