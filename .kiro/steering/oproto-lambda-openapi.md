@@ -1,5 +1,5 @@
 # Oproto.Lambda.OpenApi Reference
-# Updated 2025-12-16
+# Updated 2025-12-22
 Source generator for automatic OpenAPI spec generation from AWS Lambda functions with Lambda Annotations.
 
 ## Installation
@@ -95,6 +95,24 @@ Build generates `openapi.json` automatically.
 ```csharp
 [assembly: OpenApiOutput("main", "openapi.json")]
 ```
+
+### OpenApiTagGroup
+```csharp
+// Group related tags for hierarchical documentation navigation (x-tagGroups extension)
+[assembly: OpenApiTagGroup("User Management", "Users", "Authentication", "Roles")]
+[assembly: OpenApiTagGroup("Product Catalog", "Products", "Categories", "Inventory")]
+```
+
+### OpenApiExampleConfig
+```csharp
+// Configure automatic example generation
+[assembly: OpenApiExampleConfig(ComposeFromProperties = true, GenerateDefaults = true)]
+
+// Disable example composition (only use explicit [OpenApiExample] attributes)
+[assembly: OpenApiExampleConfig(ComposeFromProperties = false)]
+```
+
+Properties: `ComposeFromProperties` (default: true), `GenerateDefaults` (default: false)
 
 ---
 
@@ -194,7 +212,10 @@ using Oproto.Lambda.OpenApi.Attributes;
 [assembly: OpenApiInfo("Products API", "1.0", Description = "Product catalog API")]
 [assembly: OpenApiServer("https://api.example.com/v1", Description = "Production")]
 [assembly: OpenApiTagDefinition("Products", Description = "Product operations")]
+[assembly: OpenApiTagDefinition("Orders", Description = "Order operations")]
+[assembly: OpenApiTagGroup("E-Commerce", "Products", "Orders")]
 [assembly: OpenApiExternalDocs("https://docs.example.com", Description = "Full docs")]
+[assembly: OpenApiExampleConfig(ComposeFromProperties = true, GenerateDefaults = false)]
 
 namespace MyApi;
 
@@ -282,9 +303,11 @@ public class ProductFunctions
 | `OpenApiInfo` | Assembly | API title, version, contact info |
 | `OpenApiServer` | Assembly | Server URLs |
 | `OpenApiTagDefinition` | Assembly | Tag metadata |
+| `OpenApiTagGroup` | Assembly | Tag grouping for hierarchical navigation (x-tagGroups) |
 | `OpenApiExternalDocs` | Assembly/Method | External documentation links |
 | `OpenApiSecurityScheme` | Assembly | Security definitions |
 | `OpenApiOutput` | Assembly | Output file configuration |
+| `OpenApiExampleConfig` | Assembly | Automatic example generation configuration |
 | `OpenApiOperation` | Method | Operation summary, description, deprecation |
 | `OpenApiOperationId` | Method | Custom operation ID |
 | `OpenApiTag` | Class/Method | Tag assignment |

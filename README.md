@@ -19,6 +19,8 @@ A .NET source generator that automatically creates OpenAPI specifications from A
 - 📝 **AWS Lambda Support**: Designed specifically for Lambda Annotations
 - 🎯 **Type-Safe**: Leverages C# type system for accurate schemas
 - ⚡ **AOT Compatible**: Works with Native AOT compilation
+- 📂 **Tag Groups**: Organize tags into logical groups with `x-tagGroups` extension for better documentation navigation
+- 🔄 **Automatic Examples**: Compose request/response examples from property-level schema values
 
 ## OpenAPI Merge Tool
 
