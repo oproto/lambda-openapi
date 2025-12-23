@@ -176,8 +176,8 @@ This implementation plan covers adding `x-tagGroups` extension support and autom
     - Add brief mention of new features in Features section
     - _Requirements: 1.1, 6.1_
 
-- [ ] 12. Update CHANGELOG.md
-  - [ ] 12.1 Add new version entry for tag groups and example generation features
+- [x] 12. Update CHANGELOG.md
+  - [x] 12.1 Add new version entry for tag groups and example generation features
     - Document OpenApiTagGroupAttribute and x-tagGroups extension support
     - Document OpenApiExampleConfigAttribute and automatic example generation
     - Document tag group merging in merge tool

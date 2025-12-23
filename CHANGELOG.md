@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-12-22
+
+### Added
+
+- **Tag Groups Extension (`x-tagGroups`)**
+  - New `OpenApiTagGroupAttribute` for organizing related tags into logical groups at assembly level
+  - Generates `x-tagGroups` extension at the root level of OpenAPI documents
+  - Supports hierarchical navigation in documentation tools like Redoc
+  - Multiple tag groups can be defined with `AllowMultiple = true`
+  - Tag groups preserve definition order in the output
+  - Tag groups can reference tags that don't exist in the API (forward references)
+
+- **Tag Group Merging**
+  - Merge tool now combines `x-tagGroups` extensions from multiple OpenAPI specifications
+  - Same-named tag groups are merged with tags deduplicated
+  - Tag group order is preserved (first occurrence wins)
+  - Tag groups from specs that have them are preserved even when other specs don't define tag groups
+
+- **Automatic Example Generation**
+  - New `OpenApiExampleConfigAttribute` for configuring automatic example generation at assembly level
+  - Automatic composition of request/response examples from property-level `[OpenApiSchema(Example = "...")]` values
+  - Type-aware example conversion: numeric types become JSON numbers, booleans become JSON booleans
+  - Recursive example composition for nested object types
+  - Array example generation with single element examples
+  - Explicit `[OpenApiExample]` attributes take precedence over composed examples
+
+- **Default Example Generation**
+  - Format-based defaults for string properties (email, uuid, date-time, date, uri, hostname, ipv4, ipv6)
+  - Constraint-based defaults for numeric properties respecting `Minimum`/`Maximum` bounds
+  - Constraint-based defaults for string properties respecting `MinLength`/`MaxLength` bounds
+  - Type-appropriate placeholder values for properties without constraints
+  - Controlled via `GenerateDefaults` property on `OpenApiExampleConfigAttribute`
+
+- **Configuration Options**
+  - `ComposeFromProperties` (default: true) - Enable/disable automatic example composition
+  - `GenerateDefaults` (default: false) - Enable/disable default example generation
+  - Options operate independently for fine-grained control
+
+### Changed
+
+- Example generation is now enabled by default with `ComposeFromProperties = true`
+- Properties with `[OpenApiIgnore]` are excluded from composed examples
+
 ## [1.1.0] - 2025-12-20
 
 ### Added
