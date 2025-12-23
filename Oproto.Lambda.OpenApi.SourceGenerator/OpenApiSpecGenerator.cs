@@ -163,9 +163,13 @@ using Oproto.Lambda.OpenApi.Attributes;
         // Get external documentation from assembly-level attribute
         var externalDocs = GetExternalDocsFromAssembly(compilation);
 
+        // Get tag groups from assembly-level attributes
+        var tagGroups = GetTagGroupsFromAssembly(compilation);
+
         if (!validDocs.Any())
+        {
             // Return a minimal valid OpenAPI document if no valid docs
-            return new OpenApiDocument
+            var emptyDoc = new OpenApiDocument
             {
                 Info = apiInfo,
                 Paths = new OpenApiPaths(),
@@ -173,6 +177,12 @@ using Oproto.Lambda.OpenApi.Attributes;
                 Servers = serverDefinitions.Count > 0 ? serverDefinitions : null,
                 ExternalDocs = externalDocs
             };
+            
+            // Apply tag groups extension
+            ApplyTagGroupsExtension(emptyDoc, tagGroups);
+            
+            return emptyDoc;
+        }
 
         if (validDocs.Count == 1)
         {
@@ -190,6 +200,9 @@ using Oproto.Lambda.OpenApi.Attributes;
             
             // Normalize paths to ensure they start with /
             NormalizePaths(doc);
+            
+            // Apply tag groups extension
+            ApplyTagGroupsExtension(doc, tagGroups);
             
             return doc;
         }
@@ -228,6 +241,9 @@ using Oproto.Lambda.OpenApi.Attributes;
                     mergedDoc.Components.Schemas[schema.Key] = schema.Value;
             }
         }
+
+        // Apply tag groups extension
+        ApplyTagGroupsExtension(mergedDoc, tagGroups);
 
         return mergedDoc;
     }
@@ -1271,6 +1287,19 @@ using Oproto.Lambda.OpenApi.Attributes;
             {
                 // If JSON parsing fails, use as string
                 mediaType.Example = new OpenApiString(example.Value);
+            }
+        }
+        else
+        {
+            // No explicit example - try to compose from property-level examples
+            var exampleConfig = GetExampleConfigFromAssembly(_currentCompilation);
+            if (exampleConfig.ComposeFromProperties)
+            {
+                var composedExample = ComposeExampleFromProperties(bodyParameter.TypeSymbol, exampleConfig);
+                if (composedExample != null)
+                {
+                    mediaType.Example = composedExample;
+                }
             }
         }
 

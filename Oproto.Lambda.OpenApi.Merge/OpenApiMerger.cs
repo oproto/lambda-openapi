@@ -3,6 +3,7 @@ namespace Oproto.Lambda.OpenApi.Merge;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 
 /// <summary>
@@ -107,6 +108,9 @@ public class OpenApiMerger
         // Phase 4: Merge security schemes from all sources
         var securitySchemeWarnings = MergeSecuritySchemes(mergedDocument, documentList);
         warnings.AddRange(securitySchemeWarnings);
+
+        // Phase 5: Merge tag groups from all sources
+        MergeTagGroups(mergedDocument, documentList);
 
         return new MergeResult(mergedDocument, warnings, success: true);
     }
@@ -279,5 +283,144 @@ public class OpenApiMerger
         }
 
         return cloned;
+    }
+
+    /// <summary>
+    /// Reads the x-tagGroups extension from an OpenAPI document.
+    /// </summary>
+    /// <param name="document">The OpenAPI document to read from.</param>
+    /// <returns>A list of TagGroupInfo objects parsed from the extension.</returns>
+    public static List<TagGroupInfo> ReadTagGroupsExtension(OpenApiDocument document)
+    {
+        var tagGroups = new List<TagGroupInfo>();
+
+        if (document?.Extensions == null)
+            return tagGroups;
+
+        if (!document.Extensions.TryGetValue("x-tagGroups", out var extension))
+            return tagGroups;
+
+        if (extension is not OpenApiArray groupsArray)
+            return tagGroups;
+
+        foreach (var item in groupsArray)
+        {
+            if (item is not OpenApiObject groupObj)
+                continue;
+
+            string? name = null;
+            if (groupObj.TryGetValue("name", out var nameValue) && nameValue is OpenApiString nameString)
+            {
+                name = nameString.Value;
+            }
+
+            if (string.IsNullOrEmpty(name))
+                continue;
+
+            var tags = new List<string>();
+            if (groupObj.TryGetValue("tags", out var tagsValue) && tagsValue is OpenApiArray tagsArray)
+            {
+                foreach (var tagItem in tagsArray.OfType<OpenApiString>())
+                {
+                    if (!string.IsNullOrEmpty(tagItem.Value))
+                    {
+                        tags.Add(tagItem.Value);
+                    }
+                }
+            }
+
+            tagGroups.Add(new TagGroupInfo { Name = name!, Tags = tags });
+        }
+
+        return tagGroups;
+    }
+
+    /// <summary>
+    /// Writes tag groups to the x-tagGroups extension of an OpenAPI document.
+    /// </summary>
+    /// <param name="document">The OpenAPI document to write to.</param>
+    /// <param name="tagGroups">The list of tag groups to write.</param>
+    public static void WriteTagGroupsExtension(OpenApiDocument document, List<TagGroupInfo> tagGroups)
+    {
+        if (document == null)
+            throw new ArgumentNullException(nameof(document));
+
+        if (tagGroups == null || tagGroups.Count == 0)
+            return;
+
+        var tagGroupsArray = new OpenApiArray();
+
+        foreach (var group in tagGroups)
+        {
+            var tagsArray = new OpenApiArray();
+            foreach (var tag in group.Tags)
+            {
+                tagsArray.Add(new OpenApiString(tag));
+            }
+
+            var groupObject = new OpenApiObject
+            {
+                ["name"] = new OpenApiString(group.Name),
+                ["tags"] = tagsArray
+            };
+            tagGroupsArray.Add(groupObject);
+        }
+
+        document.Extensions["x-tagGroups"] = tagGroupsArray;
+    }
+
+    /// <summary>
+    /// Merges tag groups from multiple OpenAPI documents.
+    /// Combines tag groups from all source documents, merging same-named groups and deduplicating tags.
+    /// Preserves order (first occurrence wins for group position).
+    /// </summary>
+    /// <param name="mergedDocument">The merged document to write tag groups to.</param>
+    /// <param name="documents">The source documents with their configurations.</param>
+    internal static void MergeTagGroups(
+        OpenApiDocument mergedDocument,
+        List<(SourceConfiguration Source, OpenApiDocument Document)> documents)
+    {
+        if (mergedDocument == null)
+            throw new ArgumentNullException(nameof(mergedDocument));
+
+        if (documents == null || documents.Count == 0)
+            return;
+
+        var mergedGroups = new Dictionary<string, List<string>>();
+        var groupOrder = new List<string>();
+
+        foreach (var (_, document) in documents)
+        {
+            var tagGroups = ReadTagGroupsExtension(document);
+
+            foreach (var group in tagGroups)
+            {
+                if (!mergedGroups.ContainsKey(group.Name))
+                {
+                    // First occurrence of this group - add to order list
+                    mergedGroups[group.Name] = new List<string>();
+                    groupOrder.Add(group.Name);
+                }
+
+                // Merge tags, deduplicating
+                foreach (var tag in group.Tags)
+                {
+                    if (!mergedGroups[group.Name].Contains(tag))
+                    {
+                        mergedGroups[group.Name].Add(tag);
+                    }
+                }
+            }
+        }
+
+        if (mergedGroups.Count > 0)
+        {
+            // Convert to list of TagGroupInfo preserving order
+            var tagGroupsList = groupOrder
+                .Select(name => new TagGroupInfo { Name = name, Tags = mergedGroups[name] })
+                .ToList();
+
+            WriteTagGroupsExtension(mergedDocument, tagGroupsList);
+        }
     }
 }

@@ -9,8 +9,10 @@ This document provides a comprehensive reference for all attributes available in
 - [OpenApiSecuritySchemeAttribute](#openapisecurityschemeattribute) - Security scheme definitions
 - [OpenApiServerAttribute](#openapiservattribute) - Server URL definitions
 - [OpenApiTagDefinitionAttribute](#openapitagdefinitionattribute) - Tag definitions with descriptions
+- [OpenApiTagGroupAttribute](#openapitaggroupattribute) - Tag grouping for hierarchical organization
 - [OpenApiExternalDocsAttribute](#openapiexternaldocsattribute) - External documentation links (also method-level)
 - [OpenApiOutputAttribute](#openapioutputattribute) - Output file configuration
+- [OpenApiExampleConfigAttribute](#openapiexampleconfigattribute) - Automatic example generation configuration
 
 ### Method-Level Attributes
 - [OpenApiOperationAttribute](#openapioperationattribute) - Operation metadata (summary, description)
@@ -284,6 +286,97 @@ Use this attribute to provide rich metadata for tags used in your API. While ope
     Description = "Administrative operations",
     ExternalDocsUrl = "https://docs.example.com/admin")]
 ```
+
+---
+
+## OpenApiTagGroupAttribute
+
+Defines a tag group for organizing related tags in the OpenAPI specification. Tag groups are rendered using the `x-tagGroups` extension, which is supported by documentation tools like Redoc for hierarchical navigation.
+
+**Namespace:** `Oproto.Lambda.OpenApi.Attributes`
+
+**Target Types:** `Assembly`
+
+**Allow Multiple:** Yes
+
+### Constructor Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | `string` | Yes | The name of the tag group. |
+| `tags` | `params string[]` | No | The tags that belong to this group. |
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Name` | `string` | Gets the name of the tag group. |
+| `Tags` | `string[]` | Gets the tags that belong to this group. |
+
+### When to Use
+
+Use this attribute to organize your API tags into logical groups for better navigation in documentation tools. Tag groups create a hierarchical structure where:
+
+- Groups appear as top-level categories in the documentation sidebar
+- Tags within each group are nested under their parent group
+- Operations are organized under their assigned tags
+
+This is particularly useful for large APIs with many endpoints, as it helps users find related operations more easily.
+
+### Usage Examples
+
+**Basic tag grouping:**
+
+```csharp
+[assembly: OpenApiTagGroup("User Management", "Users", "Authentication", "Roles")]
+```
+
+**Multiple tag groups:**
+
+```csharp
+[assembly: OpenApiTagGroup("User Management", "Users", "Authentication", "Roles")]
+[assembly: OpenApiTagGroup("Product Catalog", "Products", "Categories", "Inventory")]
+[assembly: OpenApiTagGroup("Order Processing", "Orders", "Payments", "Shipping")]
+```
+
+**Complete example with tag definitions:**
+
+```csharp
+// Define tag metadata
+[assembly: OpenApiTagDefinition("Users", Description = "User account operations")]
+[assembly: OpenApiTagDefinition("Authentication", Description = "Login and token management")]
+[assembly: OpenApiTagDefinition("Products", Description = "Product catalog operations")]
+[assembly: OpenApiTagDefinition("Orders", Description = "Order management")]
+
+// Group tags into logical sections
+[assembly: OpenApiTagGroup("User Management", "Users", "Authentication")]
+[assembly: OpenApiTagGroup("E-Commerce", "Products", "Orders")]
+```
+
+### Generated Output
+
+The attribute generates an `x-tagGroups` extension in the OpenAPI specification:
+
+```json
+{
+  "x-tagGroups": [
+    {
+      "name": "User Management",
+      "tags": ["Users", "Authentication", "Roles"]
+    },
+    {
+      "name": "Product Catalog",
+      "tags": ["Products", "Categories", "Inventory"]
+    }
+  ]
+}
+```
+
+### Notes
+
+- Tag groups are preserved in the order they are defined
+- Tags referenced in groups do not need to exist in the API; they will still be included in the group definition
+- When merging multiple OpenAPI specifications, tag groups with the same name are merged and their tags are deduplicated
 
 ---
 
@@ -1086,6 +1179,100 @@ using Oproto.Lambda.OpenApi.Attributes;
 ```
 
 ---
+
+## OpenApiExampleConfigAttribute
+
+Configures automatic example generation behavior at the assembly level. Use this attribute to control how examples are automatically generated for request and response schemas.
+
+**Namespace:** `Oproto.Lambda.OpenApi.Attributes`
+
+**Target Types:** `Assembly`
+
+### Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `ComposeFromProperties` | `bool` | `true` | Whether to automatically compose examples from property-level examples. |
+| `GenerateDefaults` | `bool` | `false` | Whether to generate default examples for properties without explicit examples. |
+
+### When to Use
+
+Use this attribute to control automatic example generation behavior:
+
+- **Example Composition**: When enabled (default), the generator builds complete example objects by combining individual property examples defined via `[OpenApiSchema(Example = "...")]`.
+- **Default Generation**: When enabled, the generator creates sensible default examples based on property types, formats, and constraints for properties without explicit example values.
+
+### Usage Examples
+
+**Enable both composition and default generation:**
+
+```csharp
+[assembly: OpenApiExampleConfig(ComposeFromProperties = true, GenerateDefaults = true)]
+```
+
+**Disable automatic example composition:**
+
+```csharp
+[assembly: OpenApiExampleConfig(ComposeFromProperties = false)]
+```
+
+**Enable only default generation:**
+
+```csharp
+[assembly: OpenApiExampleConfig(ComposeFromProperties = false, GenerateDefaults = true)]
+```
+
+### How Example Composition Works
+
+When `ComposeFromProperties` is enabled, the generator automatically builds example objects from property-level examples:
+
+```csharp
+public class CreateProductRequest
+{
+    [OpenApiSchema(Description = "Product name", Example = "Widget Pro")]
+    public string Name { get; set; }
+
+    [OpenApiSchema(Description = "Price in USD", Example = "29.99")]
+    public decimal Price { get; set; }
+
+    [OpenApiSchema(Description = "Product category", Example = "Electronics")]
+    public string Category { get; set; }
+}
+```
+
+This automatically generates the following example in the OpenAPI specification:
+
+```json
+{
+  "name": "Widget Pro",
+  "price": 29.99,
+  "category": "Electronics"
+}
+```
+
+### How Default Generation Works
+
+When `GenerateDefaults` is enabled, the generator creates examples for properties without explicit values:
+
+| Property Type/Format | Generated Example |
+|---------------------|-------------------|
+| `string` (email format) | `"user@example.com"` |
+| `string` (uuid format) | `"550e8400-e29b-41d4-a716-446655440000"` |
+| `string` (date-time format) | `"2024-01-15T10:30:00Z"` |
+| `string` (date format) | `"2024-01-15"` |
+| `string` (uri format) | `"https://example.com"` |
+| `int`, `long` | `0` |
+| `double`, `decimal` | `0.0` |
+| `bool` | `false` |
+| `string` (no format) | `"string"` |
+
+For properties with constraints, the generator respects `Minimum`, `Maximum`, `MinLength`, and `MaxLength` values.
+
+### Precedence Rules
+
+1. Explicit `[OpenApiExample]` attributes always take precedence over composed examples
+2. Property-level `[OpenApiSchema(Example = "...")]` values are used for composition
+3. Default generation only applies when no explicit example is provided and `GenerateDefaults` is enabled---
 
 ## Deprecation Support
 
