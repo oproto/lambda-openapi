@@ -188,6 +188,101 @@ When troubleshooting generation issues, enable compiler-generated file output:
 Generated files will appear in:
 - `obj/GeneratedFiles/Oproto.Lambda.OpenApi.SourceGenerator/`
 
+## Type Mappings
+
+The source generator automatically maps .NET types to OpenAPI schema types. The following table shows the supported type mappings:
+
+### Primitive Types
+
+| .NET Type | OpenAPI Type | OpenAPI Format |
+|-----------|--------------|----------------|
+| `string` | `string` | - |
+| `int`, `Int32` | `integer` | `int32` |
+| `long`, `Int64` | `integer` | `int64` |
+| `short`, `Int16` | `integer` | `int32` |
+| `byte` | `integer` | `int32` |
+| `float`, `Single` | `number` | `float` |
+| `double`, `Double` | `number` | `double` |
+| `decimal`, `Decimal` | `number` | `double` |
+| `bool`, `Boolean` | `boolean` | - |
+
+### Date and Time Types
+
+| .NET Type | OpenAPI Type | OpenAPI Format | Notes |
+|-----------|--------------|----------------|-------|
+| `DateTime` | `string` | `date-time` | ISO 8601 format |
+| `DateTimeOffset` | `string` | `date-time` | ISO 8601 format with timezone |
+| `DateOnly` | `string` | `date` | .NET 6+ date without time (e.g., `2024-12-30`) |
+| `TimeOnly` | `string` | `time` | .NET 6+ time without date (e.g., `14:30:00`) |
+| `TimeSpan` | `string` | `duration` | ISO 8601 duration format |
+
+### Other Common Types
+
+| .NET Type | OpenAPI Type | OpenAPI Format |
+|-----------|--------------|----------------|
+| `Guid` | `string` | `uuid` |
+| `Uri` | `string` | `uri` |
+| `byte[]` | `string` | `byte` |
+
+### Nullable Types
+
+All nullable variants (e.g., `int?`, `DateTime?`, `DateOnly?`, `TimeOnly?`) are mapped to the same OpenAPI type and format as their non-nullable counterparts, with `nullable: true` added to the schema.
+
+### Collection Types
+
+| .NET Type | OpenAPI Type |
+|-----------|--------------|
+| `T[]`, `List<T>`, `IEnumerable<T>`, `ICollection<T>` | `array` with `items` schema for `T` |
+| `Dictionary<string, T>` | `object` with `additionalProperties` schema for `T` |
+
+### Complex Types
+
+Any type not listed above is treated as a complex object type and generates a schema in the `components/schemas` section with properties for each public property of the type.
+
+### Example: DateOnly and TimeOnly Usage
+
+```csharp
+public class Appointment
+{
+    [OpenApiSchema(Description = "The date of the appointment")]
+    public DateOnly Date { get; set; }
+    
+    [OpenApiSchema(Description = "The start time of the appointment")]
+    public TimeOnly StartTime { get; set; }
+    
+    [OpenApiSchema(Description = "The end time of the appointment (optional)")]
+    public TimeOnly? EndTime { get; set; }
+}
+```
+
+This generates the following OpenAPI schema:
+
+```json
+{
+  "Appointment": {
+    "type": "object",
+    "properties": {
+      "date": {
+        "type": "string",
+        "format": "date",
+        "description": "The date of the appointment"
+      },
+      "startTime": {
+        "type": "string",
+        "format": "time",
+        "description": "The start time of the appointment"
+      },
+      "endTime": {
+        "type": "string",
+        "format": "time",
+        "nullable": true,
+        "description": "The end time of the appointment (optional)"
+      }
+    }
+  }
+}
+```
+
 ## Troubleshooting
 
 ### Common Issues

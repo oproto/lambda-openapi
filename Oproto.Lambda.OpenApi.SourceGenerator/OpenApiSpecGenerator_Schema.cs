@@ -91,6 +91,7 @@ public partial class OpenApiSpecGenerator
     ///     3. Simple types (primitives, enums)
     ///     4. Complex types (classes, structs)
     ///     Complex types are added to components/schemas and referenced using $ref.
+    ///     AWS Lambda infrastructure types are excluded from schema generation.
     /// </remarks>
     private OpenApiSchema CreateSchemaInternal(ITypeSymbol typeSymbol, ISymbol memberSymbol)
     {
@@ -110,6 +111,10 @@ public partial class OpenApiSpecGenerator
         // Handle simple types (including enums)
         if (IsSimpleType(typeSymbol))
             return CreateSimpleTypeSchema(typeSymbol, memberSymbol);
+
+        // Skip AWS Lambda infrastructure types - they should not appear in components/schemas
+        if (IsAwsLambdaType(typeSymbol))
+            return new OpenApiSchema { Type = "object" };
 
         // Handle complex types
 

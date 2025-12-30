@@ -8,6 +8,8 @@ using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Readers;
 using Oproto.Lambda.OpenApi.Merge;
 
+// PathExpander is used for tilde path expansion
+
 /// <summary>
 /// Command for merging multiple OpenAPI specifications.
 /// </summary>
@@ -227,12 +229,19 @@ public class MergeCommand : Command
         var configDir = configFile.DirectoryName ?? ".";
         foreach (var source in config.Sources)
         {
+            // First expand tilde paths
+            source.Path = PathExpander.ExpandPath(source.Path);
+            
+            // Then resolve relative paths
             if (!Path.IsPathRooted(source.Path))
             {
                 source.Path = Path.GetFullPath(Path.Combine(configDir, source.Path));
             }
         }
 
+        // Expand tilde in output path
+        config.Output = PathExpander.ExpandPath(config.Output);
+        
         if (!Path.IsPathRooted(config.Output))
         {
             config.Output = Path.GetFullPath(Path.Combine(configDir, config.Output));
@@ -323,17 +332,26 @@ public class MergeCommand : Command
 
     private static async Task<OpenApiDocument> LoadOpenApiDocumentAsync(string path, bool verbose)
     {
-        if (!File.Exists(path))
+        // Expand tilde in path
+        var expandedPath = PathExpander.ExpandPath(path);
+        
+        if (!File.Exists(expandedPath))
         {
-            throw new FileNotFoundException($"Source file not found: {path}");
+            var errorMessage = $"Source file not found: {path}";
+            if (expandedPath != path)
+                errorMessage += $" (expanded to: {expandedPath})";
+            throw new FileNotFoundException(errorMessage);
         }
 
         if (verbose)
         {
-            Console.WriteLine($"  Loading: {path}");
+            if (expandedPath != path)
+                Console.WriteLine($"  Loading: {path} (expanded to: {expandedPath})");
+            else
+                Console.WriteLine($"  Loading: {path}");
         }
 
-        using var stream = File.OpenRead(path);
+        using var stream = File.OpenRead(expandedPath);
         var reader = new OpenApiStreamReader();
         var result = await reader.ReadAsync(stream);
 
@@ -349,6 +367,9 @@ public class MergeCommand : Command
 
     private static async Task<bool> WriteOpenApiDocumentAsync(OpenApiDocument document, string outputPath, bool verbose, bool force)
     {
+        // Expand tilde in output path
+        var expandedPath = PathExpander.ExpandPath(outputPath);
+        
         // Validate the merged document before writing
         var errors = document.Validate(Microsoft.OpenApi.Validations.ValidationRuleSet.GetDefaultRuleSet());
         var errorList = errors.ToList();
@@ -367,7 +388,7 @@ public class MergeCommand : Command
         }
 
         // Ensure output directory exists
-        var outputDir = Path.GetDirectoryName(outputPath);
+        var outputDir = Path.GetDirectoryName(expandedPath);
         if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
         {
             Directory.CreateDirectory(outputDir);
@@ -376,11 +397,11 @@ public class MergeCommand : Command
         var json = document.SerializeAsJson(OpenApiSpecVersion.OpenApi3_0);
         
         // Check if file exists and content matches (skip-unchanged feature)
-        if (!force && File.Exists(outputPath))
+        if (!force && File.Exists(expandedPath))
         {
             try
             {
-                var existingContent = await File.ReadAllTextAsync(outputPath);
+                var existingContent = await File.ReadAllTextAsync(expandedPath);
                 if (existingContent == json)
                 {
                     if (verbose)
@@ -400,7 +421,7 @@ public class MergeCommand : Command
             }
         }
 
-        await File.WriteAllTextAsync(outputPath, json);
+        await File.WriteAllTextAsync(expandedPath, json);
         return true; // Indicates file was written
     }
 }
