@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Deterministic Output**
+  - OpenAPI output is now fully deterministic across multiple runs with identical input
+  - Paths sorted alphabetically by path string
+  - Schemas sorted alphabetically by schema name
+  - Properties within schemas sorted alphabetically by property name
+  - Tags sorted alphabetically by tag name
+  - Tag groups sorted alphabetically by group name, with tags within groups also sorted
+  - Security schemes sorted alphabetically by scheme name
+  - Operations within paths sorted by HTTP method order (GET, PUT, POST, DELETE, OPTIONS, HEAD, PATCH, TRACE)
+  - Responses sorted by status code in ascending order
+  - Examples sorted alphabetically by example name
+  - Server order preserved as declared in source code or configuration
+
+- **Skip Unchanged Output (Merge Tool)**
+  - Merge tool now skips writing output files when content matches existing file
+  - New `--force` (`-f`) flag to override skip behavior and always write output
+  - Verbose mode logs when files are skipped due to unchanged content
+
+### Changed
+
+- `OpenApiMerger.Merge()` now returns sorted documents for deterministic output
+- Source generator now sorts all collections before serialization
+
 ## [1.2.0] - 2025-12-22
 
 ### Added
