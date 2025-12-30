@@ -48,14 +48,15 @@ public class TagGroupGenerationPropertyTests
     }
 
     /// <summary>
-    /// **Feature: tag-groups-extension, Property 2: Tag group order preservation**
-    /// **Validates: Requirements 1.3, 2.4**
+    /// **Feature: tag-groups-extension, Property 2: Tag group deterministic ordering**
+    /// **Validates: Requirements 5.1, 5.2 (deterministic-output)**
     /// 
     /// For any sequence of OpenApiTagGroupAttribute attributes applied to an assembly, 
-    /// the Source_Generator SHALL output the tag groups in the same order as they are defined.
+    /// the Source_Generator SHALL output the tag groups in alphabetical order by group name
+    /// for deterministic output.
     /// </summary>
     [Property(MaxTest = 100)]
-    public Property TagGroupAttributes_PreserveOrder()
+    public Property TagGroupAttributes_AlphabeticalOrder()
     {
         // Generate 2-4 distinct group names
         var groupNamesGen = Gen.ListOf(Gen.Elements("Group A", "Group B", "Group C", "Group D", "Group E"))
@@ -72,19 +73,20 @@ public class TagGroupGenerationPropertyTests
                 if (extractedGroups.Count != groupNames.Count)
                     return false.Label($"Expected {groupNames.Count} groups, but got {extractedGroups.Count}");
 
-                // Check order is preserved
-                var orderPreserved = true;
-                for (int i = 0; i < groupNames.Count; i++)
+                // Check groups are in alphabetical order (deterministic output requirement)
+                var expectedOrder = groupNames.OrderBy(n => n, StringComparer.Ordinal).ToList();
+                var orderCorrect = true;
+                for (int i = 0; i < expectedOrder.Count; i++)
                 {
-                    if (extractedGroups[i].Name != groupNames[i])
+                    if (extractedGroups[i].Name != expectedOrder[i])
                     {
-                        orderPreserved = false;
+                        orderCorrect = false;
                         break;
                     }
                 }
 
-                return orderPreserved
-                    .Label($"Expected order [{string.Join(", ", groupNames)}], " +
+                return orderCorrect
+                    .Label($"Expected alphabetical order [{string.Join(", ", expectedOrder)}], " +
                            $"but got [{string.Join(", ", extractedGroups.Select(g => g.Name))}]");
             });
     }

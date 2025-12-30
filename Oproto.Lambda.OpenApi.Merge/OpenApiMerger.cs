@@ -112,6 +112,9 @@ public class OpenApiMerger
         // Phase 5: Merge tag groups from all sources
         MergeTagGroups(mergedDocument, documentList);
 
+        // Phase 6: Sort for deterministic output
+        OpenApiDocumentSorter.Sort(mergedDocument);
+
         return new MergeResult(mergedDocument, warnings, success: true);
     }
 

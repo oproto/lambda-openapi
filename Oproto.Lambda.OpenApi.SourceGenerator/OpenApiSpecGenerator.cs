@@ -181,7 +181,8 @@ using Oproto.Lambda.OpenApi.Attributes;
             // Apply tag groups extension
             ApplyTagGroupsExtension(emptyDoc, tagGroups);
             
-            return emptyDoc;
+            // Sort for deterministic output
+            return SortDocument(emptyDoc);
         }
 
         if (validDocs.Count == 1)
@@ -204,7 +205,8 @@ using Oproto.Lambda.OpenApi.Attributes;
             // Apply tag groups extension
             ApplyTagGroupsExtension(doc, tagGroups);
             
-            return doc;
+            // Sort for deterministic output
+            return SortDocument(doc);
         }
 
         var mergedDoc = new OpenApiDocument
@@ -245,7 +247,8 @@ using Oproto.Lambda.OpenApi.Attributes;
         // Apply tag groups extension
         ApplyTagGroupsExtension(mergedDoc, tagGroups);
 
-        return mergedDoc;
+        // Sort for deterministic output
+        return SortDocument(mergedDoc);
     }
 
     /// <summary>
