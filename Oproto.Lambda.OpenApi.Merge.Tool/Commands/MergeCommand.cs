@@ -43,6 +43,10 @@ public class MergeCommand : Command
             new[] { "-v", "--verbose" },
             "Show detailed progress and warnings");
 
+        var forceOption = new Option<bool>(
+            new[] { "-f", "--force" },
+            "Force write output even if unchanged");
+
         // Positional argument for direct file list
         var filesArgument = new Argument<FileInfo[]>(
             "files",
@@ -57,10 +61,11 @@ public class MergeCommand : Command
         AddOption(versionOption);
         AddOption(schemaConflictOption);
         AddOption(verboseOption);
+        AddOption(forceOption);
         AddArgument(filesArgument);
 
         this.SetHandler(ExecuteAsync, configOption, outputOption, titleOption,
-            versionOption, schemaConflictOption, verboseOption, filesArgument);
+            versionOption, schemaConflictOption, verboseOption, forceOption, filesArgument);
     }
 
     private async Task<int> ExecuteAsync(
@@ -70,6 +75,7 @@ public class MergeCommand : Command
         string? version,
         SchemaConflictStrategy schemaConflict,
         bool verbose,
+        bool force,
         FileInfo[] files)
     {
         try
@@ -147,7 +153,7 @@ public class MergeCommand : Command
                 Console.WriteLine($"Writing merged specification to: {outputPath}");
             }
 
-            await WriteOpenApiDocumentAsync(result.Document, outputPath, verbose);
+            var wasWritten = await WriteOpenApiDocumentAsync(result.Document, outputPath, verbose, force);
 
             if (verbose)
             {
@@ -155,7 +161,14 @@ public class MergeCommand : Command
             }
             else
             {
-                Console.WriteLine($"Merged {documents.Count} specifications into {outputPath}");
+                if (wasWritten)
+                {
+                    Console.WriteLine($"Merged {documents.Count} specifications into {outputPath}");
+                }
+                else
+                {
+                    Console.WriteLine($"Output unchanged, skipped writing: {outputPath}");
+                }
             }
 
             return 0;
@@ -334,7 +347,7 @@ public class MergeCommand : Command
         return result.OpenApiDocument;
     }
 
-    private static async Task WriteOpenApiDocumentAsync(OpenApiDocument document, string outputPath, bool verbose)
+    private static async Task<bool> WriteOpenApiDocumentAsync(OpenApiDocument document, string outputPath, bool verbose, bool force)
     {
         // Validate the merged document before writing
         var errors = document.Validate(Microsoft.OpenApi.Validations.ValidationRuleSet.GetDefaultRuleSet());
@@ -361,6 +374,33 @@ public class MergeCommand : Command
         }
 
         var json = document.SerializeAsJson(OpenApiSpecVersion.OpenApi3_0);
+        
+        // Check if file exists and content matches (skip-unchanged feature)
+        if (!force && File.Exists(outputPath))
+        {
+            try
+            {
+                var existingContent = await File.ReadAllTextAsync(outputPath);
+                if (existingContent == json)
+                {
+                    if (verbose)
+                    {
+                        Console.WriteLine($"Output unchanged, skipping write: {outputPath}");
+                    }
+                    return false; // Indicates file was not written
+                }
+            }
+            catch (IOException ex)
+            {
+                // Log warning and proceed with write if we can't read existing file
+                if (verbose)
+                {
+                    Console.Error.WriteLine($"Warning: Could not read existing file for comparison: {ex.Message}");
+                }
+            }
+        }
+
         await File.WriteAllTextAsync(outputPath, json);
+        return true; // Indicates file was written
     }
 }
