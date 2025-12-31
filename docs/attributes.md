@@ -714,6 +714,8 @@ Specifies OpenAPI tag information for grouping operations. Tags can be used to g
 
 **Target Types:** `Class`, `Method`, `Parameter`, `Property`
 
+**Allow Multiple:** Yes
+
 ### Constructor Parameters
 
 | Parameter | Type | Required | Default | Description |
@@ -730,38 +732,90 @@ Specifies OpenAPI tag information for grouping operations. Tags can be used to g
 
 ### When to Use
 
-Use this attribute to organize your API operations into logical groups. When applied to a class, all methods in that class inherit the tag. When applied to a method, it overrides or adds to the class-level tag. Tags help API consumers navigate large APIs by grouping related operations together.
+Use this attribute to organize your API operations into logical groups. Tags help API consumers navigate large APIs by grouping related operations together.
 
-### Usage Example
+### Tag Inheritance Behavior
+
+The `[OpenApiTag]` attribute supports class-level inheritance with the following rules:
+
+1. **Class-level tags**: When applied to a class, all methods in that class inherit the tag(s)
+2. **Method-level precedence**: When a method has its own `[OpenApiTag]` attribute(s), they completely override any class-level tags
+3. **Multiple tags**: Both class and method levels support multiple `[OpenApiTag]` attributes
+4. **Default tag**: If neither the class nor method has any tags, the operation is assigned to the "Default" tag
+
+### Usage Examples
+
+**Class-level tag inheritance:**
 
 ```csharp
-// Apply tag at class level - all methods inherit this tag
-[GenerateOpenApiSpec("E-Commerce API", "1.0")]
-[OpenApiTag("Products", "Operations for managing products in the catalog")]
+// All methods in this class inherit the "Products" tag
+[OpenApiTag("Products")]
 public class ProductFunctions
 {
     [LambdaFunction]
     [HttpApi(LambdaHttpMethod.Get, "/products")]
-    public Task<IEnumerable<Product>> GetProducts() { }
+    public Task<IEnumerable<Product>> GetProducts() { }  // Tagged: Products
 
     [LambdaFunction]
     [HttpApi(LambdaHttpMethod.Post, "/products")]
-    public Task<Product> CreateProduct([FromBody] CreateProductRequest request) { }
-}
+    public Task<Product> CreateProduct([FromBody] CreateProductRequest request) { }  // Tagged: Products
 
-// Apply tag at method level
-[GenerateOpenApiSpec("E-Commerce API", "1.0")]
+    [LambdaFunction]
+    [HttpApi(LambdaHttpMethod.Get, "/products/{id}")]
+    public Task<Product> GetProduct(string id) { }  // Tagged: Products
+}
+```
+
+**Method-level tags override class-level:**
+
+```csharp
+[OpenApiTag("Products")]
+public class ProductFunctions
+{
+    [LambdaFunction]
+    [HttpApi(LambdaHttpMethod.Get, "/products")]
+    public Task<IEnumerable<Product>> GetProducts() { }  // Tagged: Products (inherited)
+
+    [LambdaFunction]
+    [HttpApi(LambdaHttpMethod.Get, "/products/admin")]
+    [OpenApiTag("Admin")]  // Overrides class-level tag
+    public Task<IEnumerable<Product>> GetProductsAdmin() { }  // Tagged: Admin (NOT Products)
+}
+```
+
+**Multiple tags at class level:**
+
+```csharp
+[OpenApiTag("Products")]
+[OpenApiTag("Catalog")]
+public class ProductFunctions
+{
+    [LambdaFunction]
+    [HttpApi(LambdaHttpMethod.Get, "/products")]
+    public Task<IEnumerable<Product>> GetProducts() { }  // Tagged: Products, Catalog
+}
+```
+
+**Mixed inheritance example:**
+
+```csharp
+[OpenApiTag("Orders")]
 public class OrderFunctions
 {
     [LambdaFunction]
     [HttpApi(LambdaHttpMethod.Get, "/orders")]
-    [OpenApiTag("Orders", "Operations for managing customer orders")]
-    public Task<IEnumerable<Order>> GetOrders() { }
+    public Task<IEnumerable<Order>> GetOrders() { }  // Tagged: Orders (inherited)
 
     [LambdaFunction]
     [HttpApi(LambdaHttpMethod.Get, "/orders/{id}/items")]
     [OpenApiTag("Order Items")]
-    public Task<IEnumerable<OrderItem>> GetOrderItems(string id) { }
+    public Task<IEnumerable<OrderItem>> GetOrderItems(string id) { }  // Tagged: Order Items (overrides)
+
+    [LambdaFunction]
+    [HttpApi(LambdaHttpMethod.Post, "/orders/{id}/refund")]
+    [OpenApiTag("Refunds")]
+    [OpenApiTag("Admin")]
+    public Task<Refund> RefundOrder(string id) { }  // Tagged: Refunds, Admin (overrides)
 }
 ```
 

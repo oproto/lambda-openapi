@@ -176,18 +176,70 @@ Array of server definitions for the merged specification. Source servers are ign
 
 Array of source specifications to merge:
 
-- `path` (required): File path to the OpenAPI specification (relative to config file or absolute)
+- `path` (required): File path to the OpenAPI specification (relative to config file or absolute). Supports tilde expansion (see below).
 - `pathPrefix` (optional): Prefix to prepend to all paths from this source (e.g., `/users`)
 - `operationIdPrefix` (optional): Prefix to prepend to all operationIds from this source (e.g., `users_`)
 - `name` (optional): Friendly name for this source, used in warnings and errors (defaults to filename)
 
 #### output (required)
 
-File path for the merged specification output.
+File path for the merged specification output. Supports tilde expansion (see below).
 
 #### schemaConflict (optional)
 
 Strategy for handling schema naming conflicts. Default is `rename`.
+
+## Tilde Path Expansion
+
+The merge tool supports Unix-style tilde (`~`) expansion in file paths, making it easier to reference files relative to your home directory.
+
+### Supported Syntax
+
+| Syntax | Expansion | Platform |
+|--------|-----------|----------|
+| `~/path/to/file` | Current user's home directory | All platforms |
+| `~username/path/to/file` | Specified user's home directory | Unix/macOS only |
+
+### Examples
+
+**Configuration file with tilde paths:**
+
+```json
+{
+  "info": {
+    "title": "My API",
+    "version": "1.0.0"
+  },
+  "sources": [
+    { "path": "~/projects/service-a/openapi.json" },
+    { "path": "~/projects/service-b/openapi.json" }
+  ],
+  "output": "~/api-docs/merged.json"
+}
+```
+
+**Command line with tilde paths:**
+
+```bash
+dotnet openapi-merge merge --title "My API" --version "1.0.0" \
+  -o ~/output/merged.json \
+  ~/services/api1.json ~/services/api2.json
+```
+
+### Platform Notes
+
+- **macOS/Linux**: Both `~/` and `~username/` syntax are supported
+- **Windows**: Only `~/` syntax is supported (expands to `%USERPROFILE%`)
+- If tilde expansion fails (e.g., user not found), a clear error message is displayed identifying the problematic path
+
+### Error Handling
+
+If a tilde path cannot be expanded, the tool reports an error with both the original path and the expansion failure reason:
+
+```
+Error: Source file not found: ~/invalid/path.json
+  Cannot expand path '~/invalid/path.json': Unable to determine home directory.
+```
 
 ## Schema Conflict Strategies
 

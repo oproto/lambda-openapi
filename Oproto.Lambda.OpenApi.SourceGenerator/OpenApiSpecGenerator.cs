@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -628,7 +629,8 @@ using Oproto.Lambda.OpenApi.Attributes;
     }
 
     /// <summary>
-    /// Extracts tag names from [OpenApiTag] attributes on a method.
+    /// Extracts tag names from [OpenApiTag] attributes on a method or its containing class.
+    /// Method-level tags take precedence over class-level tags.
     /// Returns a list with "Default" if no tags are specified.
     /// </summary>
     /// <param name="methodSymbol">The method symbol to check for OpenApiTag attributes.</param>
@@ -637,6 +639,7 @@ using Oproto.Lambda.OpenApi.Attributes;
     {
         var tags = new List<string>();
 
+        // First, check method-level tags
         foreach (var attr in methodSymbol.GetAttributes())
         {
             if (attr.AttributeClass?.Name != "OpenApiTagAttribute")
@@ -648,6 +651,28 @@ using Oproto.Lambda.OpenApi.Attributes;
                 !string.IsNullOrEmpty(tagName))
             {
                 tags.Add(tagName);
+            }
+        }
+
+        // If method has tags, use those (method-level takes precedence)
+        if (tags.Count > 0)
+            return tags;
+
+        // Otherwise, check class-level tags
+        var containingType = methodSymbol.ContainingType;
+        if (containingType != null)
+        {
+            foreach (var attr in containingType.GetAttributes())
+            {
+                if (attr.AttributeClass?.Name != "OpenApiTagAttribute")
+                    continue;
+
+                if (attr.ConstructorArguments.Length > 0 &&
+                    attr.ConstructorArguments[0].Value is string tagName &&
+                    !string.IsNullOrEmpty(tagName))
+                {
+                    tags.Add(tagName);
+                }
             }
         }
 
@@ -887,6 +912,11 @@ using Oproto.Lambda.OpenApi.Attributes;
             var fromBodyAttr = parameter.GetAttributes()
                 .FirstOrDefault(a => a.AttributeClass?.Name == "FromBodyAttribute");
 
+            // Skip AWS Lambda types without explicit [FromBody] attribute
+            // These are infrastructure types that should not appear in API documentation
+            if (IsAwsLambdaType(parameter.Type) && fromBodyAttr == null)
+                continue;
+
             if (fromRouteAttr != null)
             {
                 parameters.Add(new ParameterInfo
@@ -952,6 +982,117 @@ using Oproto.Lambda.OpenApi.Attributes;
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Determines if a type is an AWS Lambda infrastructure type that should be excluded from the OpenAPI specification.
+    /// These types are Lambda-specific request/response types that should not appear in public API documentation.
+    /// </summary>
+    /// <param name="typeSymbol">The type symbol to check.</param>
+    /// <returns>True if the type is an AWS Lambda infrastructure type, false otherwise.</returns>
+    /// <remarks>
+    /// AWS Lambda types are identified by:
+    /// - Namespace starting with "Amazon.Lambda." (e.g., Amazon.Lambda.APIGatewayEvents)
+    /// - Common type names like APIGatewayProxyRequest, APIGatewayHttpApiV2ProxyRequest, ILambdaContext
+    /// </remarks>
+    private bool IsAwsLambdaType(ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol == null)
+            return false;
+
+        var containingNamespace = typeSymbol.ContainingNamespace?.ToDisplayString() ?? "";
+        
+        // Check namespace - AWS Lambda types are in Amazon.Lambda.* namespaces
+        if (containingNamespace.StartsWith("Amazon.Lambda.", StringComparison.Ordinal))
+            return true;
+        
+        // Check common AWS Lambda type names for cases where namespace might not be fully resolved
+        var awsTypeNames = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "APIGatewayProxyRequest",
+            "APIGatewayProxyResponse",
+            "APIGatewayHttpApiV2ProxyRequest",
+            "APIGatewayHttpApiV2ProxyResponse",
+            "ILambdaContext",
+            "LambdaContext",
+            "APIGatewayCustomAuthorizerRequest",
+            "APIGatewayCustomAuthorizerResponse",
+            "ApplicationLoadBalancerRequest",
+            "ApplicationLoadBalancerResponse"
+        };
+        
+        return awsTypeNames.Contains(typeSymbol.Name);
+    }
+
+    /// <summary>
+    /// Extracts path parameters from a route template string.
+    /// </summary>
+    /// <param name="routeTemplate">The route template (e.g., "/companies/{companyId}/locations/{locationId}")</param>
+    /// <returns>List of parameter names found in the template.</returns>
+    private static List<string> ExtractPathParametersFromTemplate(string routeTemplate)
+    {
+        var parameters = new List<string>();
+        
+        if (string.IsNullOrEmpty(routeTemplate))
+            return parameters;
+            
+        var regex = new Regex(@"\{([^}]+)\}");
+        var matches = regex.Matches(routeTemplate);
+        
+        foreach (Match match in matches)
+        {
+            var paramName = match.Groups[1].Value;
+            // Handle constraint syntax like {id:int} by stripping the constraint
+            var colonIndex = paramName.IndexOf(':');
+            if (colonIndex > 0)
+                paramName = paramName.Substring(0, colonIndex);
+            parameters.Add(paramName);
+        }
+        
+        return parameters;
+    }
+
+    /// <summary>
+    /// Ensures all path parameters from the route template are defined in the operation parameters.
+    /// </summary>
+    /// <param name="routeTemplate">The route template containing path parameters.</param>
+    /// <param name="methodParameters">The method parameters extracted from the method signature.</param>
+    /// <param name="existingParameters">The existing OpenAPI parameters already created.</param>
+    /// <returns>A list of OpenAPI parameters with any missing path parameters added.</returns>
+    private IList<OpenApiParameter> EnsurePathParametersDefined(
+        string routeTemplate,
+        List<ParameterInfo> methodParameters,
+        IList<OpenApiParameter> existingParameters)
+    {
+        var templateParams = ExtractPathParametersFromTemplate(routeTemplate);
+        var result = new List<OpenApiParameter>(existingParameters);
+        
+        foreach (var templateParam in templateParams)
+        {
+            // Check if already defined in existing parameters
+            if (result.Any(p => string.Equals(p.Name, templateParam, StringComparison.OrdinalIgnoreCase) && 
+                               p.In == ParameterLocation.Path))
+                continue;
+                
+            // Check if there's a method parameter with this name (case-insensitive)
+            var methodParam = methodParameters.FirstOrDefault(
+                p => string.Equals(p.Name, templateParam, StringComparison.OrdinalIgnoreCase));
+            
+            // Create parameter definition
+            var param = new OpenApiParameter
+            {
+                Name = templateParam,
+                In = ParameterLocation.Path,
+                Required = true, // Path parameters are always required per OpenAPI spec
+                Schema = methodParam != null 
+                    ? CreateSchema(methodParam.TypeSymbol) 
+                    : new OpenApiSchema { Type = "string" }
+            };
+            
+            result.Add(param);
+        }
+        
+        return result;
     }
 
     /// <summary>
@@ -1159,6 +1300,13 @@ using Oproto.Lambda.OpenApi.Attributes;
             operation.Summary = GetMethodSummary(endpoint);
             operation.Description = GetMethodDescription(endpoint);
             operation.Parameters = CreateParameters(endpoint.Parameters);
+            
+            // Ensure all path parameters from the route template are defined
+            operation.Parameters = EnsurePathParametersDefined(
+                endpoint.Route, 
+                endpoint.Parameters, 
+                operation.Parameters);
+            
             operation.Responses = CreateResponses(endpoint);
             operation.Tags = CreateTags(endpoint);
 

@@ -27,10 +27,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New `--force` (`-f`) flag to override skip behavior and always write output
   - Verbose mode logs when files are skipped due to unchanged content
 
+- **Tilde Path Expansion (Merge Tool)**
+  - Source file paths and output paths now support `~/` expansion to user's home directory
+  - Unix/macOS also supports `~username/` syntax for other users' home directories
+  - Clear error messages when tilde expansion fails
+
+- **DateOnly and TimeOnly Type Support**
+  - `DateOnly` properties/parameters now generate `type: string, format: date` schemas
+  - `TimeOnly` properties/parameters now generate `type: string, format: time` schemas
+  - Nullable variants (`DateOnly?`, `TimeOnly?`) are fully supported
+  - These types are treated as built-in types and do not generate separate schema definitions
+
+- **Class-Level OpenApiTag Support**
+  - `[OpenApiTag]` attribute can now be applied at the class level
+  - All methods in a class inherit class-level tags
+  - Method-level tags take precedence over class-level tags when both are present
+  - Multiple class-level tags are supported
+
 ### Changed
 
 - `OpenApiMerger.Merge()` now returns sorted documents for deterministic output
 - Source generator now sorts all collections before serialization
+
+### Fixed
+
+- **Path Parameter Generation**
+  - Path parameters in route templates (e.g., `{companyId}`) are now automatically defined in the OpenAPI specification
+  - Previously, path parameters without corresponding `[FromRoute]` method parameters were missing from the spec
+  - Path parameters now correctly set `in: path` and `required: true` as per OpenAPI specification
+  - Type inference uses method parameter type when available, defaults to `string` otherwise
+
+- **AWS Lambda Type Exclusion**
+  - AWS Lambda infrastructure types (`APIGatewayProxyRequest`, `APIGatewayHttpApiV2ProxyRequest`, etc.) are now excluded from the OpenAPI specification
+  - POST methods without `[FromBody]` parameters no longer generate a requestBody
+  - Types from `Amazon.Lambda.*` namespaces are automatically filtered from parameters and schemas
 
 ## [1.2.0] - 2025-12-22
 
