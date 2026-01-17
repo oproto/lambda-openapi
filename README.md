@@ -26,6 +26,30 @@ A .NET source generator that automatically creates OpenAPI specifications from A
 
 The ecosystem also includes a powerful merge tool for combining multiple OpenAPI specifications into a single unified document. This is ideal for microservice architectures where each service generates its own OpenAPI spec.
 
+### Lambda Merge Tool
+
+For automated workflows, the Lambda Merge Tool provides an AWS Lambda-based solution that automatically merges OpenAPI specs when changes are detected in S3.
+
+**Features:**
+- Automatic merging triggered by S3 events
+- Step Functions-based debouncing for rapid changes
+- Conditional writes (only updates when content changes)
+- CloudWatch metrics and alarms
+
+**Quick Start with CDK:**
+
+```csharp
+var mergeConstruct = new OpenApiMergeConstruct(this, "OpenApiMerge", new OpenApiMergeConstructProps
+{
+    InputBucket = bucket,
+    ApiPrefixes = new[] { "publicapi/", "internalapi/" }
+});
+```
+
+For detailed documentation, see [Lambda Merge Tool Documentation](docs/lambda-merge.md).
+
+### CLI Merge Tool
+
 ## Project Website and Documentation
 
 Documentation, examples and more are located on [LambdaOpenApi](https://lambdaopenapi.dev) website.
@@ -95,7 +119,8 @@ public async Task<APIGatewayProxyResponse> GetUser(
 - [Getting Started Guide](docs/getting-started.md)
 - [Attribute Reference](docs/attributes.md)
 - [Configuration Options](docs/configuration.md)
-- [Merge Tool](docs/merge-tool.md)
+- [Merge Tool CLI](docs/merge-tool.md)
+- [Lambda Merge Tool](docs/lambda-merge.md)
 - [Examples](Oproto.Lambda.OpenApi.Examples/)
 - [Changelog](CHANGELOG.md)
 

@@ -3,6 +3,7 @@ namespace Oproto.Lambda.OpenApi.Merge;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 
@@ -108,10 +109,11 @@ public static class OpenApiDocumentSorter
         if (schemas == null || schemas.Count == 0)
             return schemas ?? new Dictionary<string, OpenApiSchema>();
 
+        var visited = new HashSet<OpenApiSchema>(ReferenceEqualityComparer.Instance);
         var sortedSchemas = new Dictionary<string, OpenApiSchema>();
         foreach (var schema in schemas.OrderBy(s => s.Key, StringComparer.Ordinal))
         {
-            sortedSchemas[schema.Key] = SortSchemaProperties(schema.Value);
+            sortedSchemas[schema.Key] = SortSchemaProperties(schema.Value, visited);
         }
         return sortedSchemas;
     }
@@ -123,8 +125,23 @@ public static class OpenApiDocumentSorter
     /// <returns>The schema with sorted properties.</returns>
     internal static OpenApiSchema SortSchemaProperties(OpenApiSchema schema)
     {
+        return SortSchemaProperties(schema, new HashSet<OpenApiSchema>(ReferenceEqualityComparer.Instance));
+    }
+
+    /// <summary>
+    /// Sorts properties within a schema alphabetically with cycle detection.
+    /// </summary>
+    /// <param name="schema">The schema to sort.</param>
+    /// <param name="visited">Set of already visited schemas to prevent infinite recursion.</param>
+    /// <returns>The schema with sorted properties.</returns>
+    private static OpenApiSchema SortSchemaProperties(OpenApiSchema schema, HashSet<OpenApiSchema> visited)
+    {
         if (schema == null)
             return new OpenApiSchema();
+
+        // Detect cycles - if we've already visited this schema instance, return it as-is
+        if (!visited.Add(schema))
+            return schema;
 
         if (schema.Properties != null && schema.Properties.Count > 0)
         {
@@ -132,7 +149,7 @@ public static class OpenApiDocumentSorter
             foreach (var prop in schema.Properties.OrderBy(p => p.Key, StringComparer.Ordinal))
             {
                 // Recursively sort nested schema properties
-                sortedProperties[prop.Key] = SortSchemaProperties(prop.Value);
+                sortedProperties[prop.Key] = SortSchemaProperties(prop.Value, visited);
             }
             schema.Properties = sortedProperties;
         }
@@ -140,30 +157,41 @@ public static class OpenApiDocumentSorter
         // Sort items schema if present (for arrays)
         if (schema.Items != null)
         {
-            schema.Items = SortSchemaProperties(schema.Items);
+            schema.Items = SortSchemaProperties(schema.Items, visited);
         }
 
         // Sort additionalProperties schema if present
         if (schema.AdditionalProperties != null)
         {
-            schema.AdditionalProperties = SortSchemaProperties(schema.AdditionalProperties);
+            schema.AdditionalProperties = SortSchemaProperties(schema.AdditionalProperties, visited);
         }
 
         // Sort allOf, oneOf, anyOf schemas
         if (schema.AllOf != null && schema.AllOf.Count > 0)
         {
-            schema.AllOf = schema.AllOf.Select(SortSchemaProperties).ToList();
+            schema.AllOf = schema.AllOf.Select(s => SortSchemaProperties(s, visited)).ToList();
         }
         if (schema.OneOf != null && schema.OneOf.Count > 0)
         {
-            schema.OneOf = schema.OneOf.Select(SortSchemaProperties).ToList();
+            schema.OneOf = schema.OneOf.Select(s => SortSchemaProperties(s, visited)).ToList();
         }
         if (schema.AnyOf != null && schema.AnyOf.Count > 0)
         {
-            schema.AnyOf = schema.AnyOf.Select(SortSchemaProperties).ToList();
+            schema.AnyOf = schema.AnyOf.Select(s => SortSchemaProperties(s, visited)).ToList();
         }
 
         return schema;
+    }
+
+    /// <summary>
+    /// Reference equality comparer for OpenApiSchema to detect circular references.
+    /// </summary>
+    private sealed class ReferenceEqualityComparer : IEqualityComparer<OpenApiSchema>
+    {
+        public static readonly ReferenceEqualityComparer Instance = new();
+        
+        public bool Equals(OpenApiSchema? x, OpenApiSchema? y) => ReferenceEquals(x, y);
+        public int GetHashCode(OpenApiSchema obj) => RuntimeHelpers.GetHashCode(obj);
     }
 
 

@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Lambda Merge Tool**
+  - New `Oproto.Lambda.OpenApi.Merge.Lambda` package for AWS Lambda-based OpenAPI merging
+  - Automatic merging triggered by S3 events (object created, modified, or deleted)
+  - Step Functions-based debouncing to batch rapid successive changes
+  - Configurable debounce wait duration (default: 5 seconds)
+  - Post-merge event checking to ensure no changes are missed during merge execution
+  - Conditional writes - only updates output when merged result differs from existing
+  - CloudWatch metrics: merge duration, success/failure counts, files processed
+  - Comprehensive error handling with detailed logging
+
+- **CDK Construct for Lambda Merge**
+  - New `Oproto.Lambda.OpenApi.Merge.Cdk` package with reusable CDK construct
+  - `OpenApiMergeConstruct` creates all required AWS resources
+  - Configurable CloudWatch alarms for merge failures
+  - Support for single-bucket or dual-bucket configurations
+  - Multi-API prefix support with single deployment
+  - Standalone CloudFormation template for non-CDK users
+
+- **Auto-Discovery Mode (Merge Tool)**
+  - New `autoDiscover` configuration option for automatic source file discovery
+  - When enabled, finds all `.json` files in the directory (excluding config and output)
+  - New `excludePatterns` option for glob-based file exclusion
+  - Supported in both CLI merge tool and Lambda merge tool
+  - Automatically excludes the output file to prevent circular merges
+
 - **Deterministic Output**
   - OpenAPI output is now fully deterministic across multiple runs with identical input
   - Paths sorted alphabetically by path string

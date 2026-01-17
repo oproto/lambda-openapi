@@ -1,0 +1,206 @@
+{
+  "Comment": "Debounce OpenAPI merge operations per API prefix with post-merge event checking",
+  "QueryLanguage": "JSONata",
+  "StartAt": "ExtractPrefix",
+  "States": {
+    "ExtractPrefix": {
+      "Type": "Pass",
+      "Output": {
+        "prefix": "{% $join($filter($split($states.input.detail.object.key, '/'), function($v, $i, $a) { $i < $count($a) - 1 }), '/') & '/' %}",
+        "bucket": "{% $states.input.detail.bucket.name %}",
+        "eventTime": "{% $states.input.time %}"
+      },
+      "Next": "CheckExistingExecution"
+    },
+    "CheckExistingExecution": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:getItem",
+      "Arguments": {
+        "TableName": "${DebounceTable}",
+        "Key": {
+          "prefix": { "S": "{% $states.input.prefix %}" }
+        }
+      },
+      "Output": {
+        "prefix": "{% $states.input.prefix %}",
+        "bucket": "{% $states.input.bucket %}",
+        "eventTime": "{% $states.input.eventTime %}",
+        "exists": "{% $exists($states.result.Item) %}",
+        "existingExecutionId": "{% $states.result.Item.executionId.S %}"
+      },
+      "Next": "BranchOnExisting"
+    },
+    "BranchOnExisting": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Condition": "{% $states.input.exists = true %}",
+          "Next": "UpdateEventTimestamp"
+        }
+      ],
+      "Default": "CreateExecution"
+    },
+    "UpdateEventTimestamp": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Arguments": {
+        "TableName": "${DebounceTable}",
+        "Key": {
+          "prefix": { "S": "{% $states.input.prefix %}" }
+        },
+        "UpdateExpression": "SET lastEventTime = :ts",
+        "ExpressionAttributeValues": {
+          ":ts": { "S": "{% $states.input.eventTime %}" }
+        }
+      },
+      "Comment": "Update timestamp and exit - existing execution will handle",
+      "End": true
+    },
+    "CreateExecution": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Arguments": {
+        "TableName": "${DebounceTable}",
+        "Item": {
+          "prefix": { "S": "{% $states.input.prefix %}" },
+          "executionId": { "S": "{% $states.context.Execution.Id %}" },
+          "lastEventTime": { "S": "{% $states.input.eventTime %}" },
+          "ttl": { "N": "{% $string($floor(($toMillis($now()) / 1000) + 300)) %}" }
+        }
+      },
+      "Output": {
+        "prefix": "{% $states.input.prefix %}",
+        "bucket": "{% $states.input.bucket %}"
+      },
+      "Next": "WaitForDebounce"
+    },
+    "WaitForDebounce": {
+      "Type": "Wait",
+      "Seconds": "${DebounceSeconds}",
+      "Next": "CheckForNewerEvents"
+    },
+    "CheckForNewerEvents": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:getItem",
+      "Arguments": {
+        "TableName": "${DebounceTable}",
+        "Key": {
+          "prefix": { "S": "{% $states.input.prefix %}" }
+        }
+      },
+      "Output": {
+        "prefix": "{% $states.input.prefix %}",
+        "bucket": "{% $states.input.bucket %}",
+        "isOwner": "{% $states.result.Item.executionId.S = $states.context.Execution.Id %}",
+        "lastEventTime": "{% $states.result.Item.lastEventTime.S %}",
+        "mergeStartTime": "{% $states.result.Item.mergeStartTime.S %}"
+      },
+      "Next": "BranchOnOwnership"
+    },
+    "BranchOnOwnership": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Condition": "{% $states.input.isOwner = false %}",
+          "Next": "AbandonExecution"
+        }
+      ],
+      "Default": "RecordMergeStart"
+    },
+    "AbandonExecution": {
+      "Type": "Succeed",
+      "Comment": "Another execution took over"
+    },
+    "RecordMergeStart": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Arguments": {
+        "TableName": "${DebounceTable}",
+        "Key": {
+          "prefix": { "S": "{% $states.input.prefix %}" }
+        },
+        "UpdateExpression": "SET mergeStartTime = :ts",
+        "ExpressionAttributeValues": {
+          ":ts": { "S": "{% $now() %}" }
+        }
+      },
+      "Output": {
+        "prefix": "{% $states.input.prefix %}",
+        "bucket": "{% $states.input.bucket %}",
+        "mergeStartTime": "{% $now() %}"
+      },
+      "Next": "InvokeMergeLambda"
+    },
+    "InvokeMergeLambda": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Arguments": {
+        "FunctionName": "${MergeFunctionArn}",
+        "Payload": {
+          "inputBucket": "{% $states.input.bucket %}",
+          "prefix": "{% $states.input.prefix %}",
+          "outputBucket": "${OutputBucket}"
+        }
+      },
+      "Output": {
+        "prefix": "{% $states.input.prefix %}",
+        "bucket": "{% $states.input.bucket %}",
+        "mergeStartTime": "{% $states.input.mergeStartTime %}",
+        "mergeResult": "{% $states.result.Payload %}"
+      },
+      "Next": "CheckPostMergeEvents",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "CheckPostMergeEvents",
+          "Output": {
+            "prefix": "{% $states.input.prefix %}",
+            "bucket": "{% $states.input.bucket %}",
+            "mergeStartTime": "{% $states.input.mergeStartTime %}",
+            "mergeError": "{% $states.error %}"
+          }
+        }
+      ]
+    },
+    "CheckPostMergeEvents": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:getItem",
+      "Arguments": {
+        "TableName": "${DebounceTable}",
+        "Key": {
+          "prefix": { "S": "{% $states.input.prefix %}" }
+        }
+      },
+      "Output": {
+        "prefix": "{% $states.input.prefix %}",
+        "bucket": "{% $states.input.bucket %}",
+        "mergeStartTime": "{% $states.input.mergeStartTime %}",
+        "lastEventTime": "{% $states.result.Item.lastEventTime.S %}",
+        "hasNewerEvents": "{% $toMillis($states.result.Item.lastEventTime.S) > $toMillis($states.input.mergeStartTime) %}"
+      },
+      "Next": "BranchOnPostMergeEvents"
+    },
+    "BranchOnPostMergeEvents": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Condition": "{% $states.input.hasNewerEvents = true %}",
+          "Next": "WaitForDebounce",
+          "Comment": "Events arrived during merge - loop back"
+        }
+      ],
+      "Default": "CleanupExecution"
+    },
+    "CleanupExecution": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:deleteItem",
+      "Arguments": {
+        "TableName": "${DebounceTable}",
+        "Key": {
+          "prefix": { "S": "{% $states.input.prefix %}" }
+        }
+      },
+      "End": true
+    }
+  }
+}

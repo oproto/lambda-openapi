@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12</LangVersion>
+    
+    <!-- Package Configuration -->
+    <IsPackable>true</IsPackable>
+    <PackageId>Oproto.Lambda.OpenApi.Merge.Cdk</PackageId>
+    <Description>AWS CDK construct for deploying the OpenAPI merge Lambda function with S3 event triggers and Step Functions debouncing.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    
+    <!-- Documentation -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- AWS CDK -->
+    <PackageReference Include="Amazon.CDK.Lib" Version="2.170.0" />
+    <PackageReference Include="Constructs" Version="10.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Oproto.Lambda.OpenApi.Merge.Lambda\Oproto.Lambda.OpenApi.Merge.Lambda.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="StateMachines\debounce-state-machine.json" />
+  </ItemGroup>
+
+</Project>

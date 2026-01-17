@@ -1,0 +1,635 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  OpenAPI Merge Lambda - Automatically merges OpenAPI specification files when changes are detected in S3.
+  This template creates a Lambda function, Step Functions state machine for debouncing, DynamoDB table for state tracking,
+  and EventBridge rules for S3 event notifications.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: S3 Configuration
+        Parameters:
+          - InputBucketName
+          - OutputBucketName
+          - ApiPrefixes
+      - Label:
+          default: Lambda Configuration
+        Parameters:
+          - LambdaCodeS3Bucket
+          - LambdaCodeS3Key
+          - MemorySize
+          - TimeoutSeconds
+      - Label:
+          default: Debounce Configuration
+        Parameters:
+          - DebounceSeconds
+      - Label:
+          default: Monitoring Configuration
+        Parameters:
+          - EnableAlarms
+          - AlarmThreshold
+          - AlarmEvaluationPeriods
+          - AlarmSnsTopicArn
+    ParameterLabels:
+      InputBucketName:
+        default: Input S3 Bucket Name
+      OutputBucketName:
+        default: Output S3 Bucket Name (optional)
+      ApiPrefixes:
+        default: API Prefixes (comma-separated)
+      LambdaCodeS3Bucket:
+        default: Lambda Code S3 Bucket
+      LambdaCodeS3Key:
+        default: Lambda Code S3 Key
+      MemorySize:
+        default: Lambda Memory Size (MB)
+      TimeoutSeconds:
+        default: Lambda Timeout (seconds)
+      DebounceSeconds:
+        default: Debounce Wait Time (seconds)
+      EnableAlarms:
+        default: Enable CloudWatch Alarms
+      AlarmThreshold:
+        default: Alarm Failure Threshold
+      AlarmEvaluationPeriods:
+        default: Alarm Evaluation Periods
+      AlarmSnsTopicArn:
+        default: SNS Topic ARN for Alarms (optional)
+
+Parameters:
+  InputBucketName:
+    Type: String
+    Description: Name of the S3 bucket containing input files (config and source OpenAPI specs)
+    MinLength: 3
+    MaxLength: 63
+
+  OutputBucketName:
+    Type: String
+    Description: Name of the S3 bucket for output files. Leave empty to use the same bucket as input.
+    Default: ''
+
+  ApiPrefixes:
+    Type: CommaDelimitedList
+    Description: |
+      Comma-separated list of API prefixes to monitor (e.g., "publicapi/,internalapi/").
+      Each prefix should end with a forward slash.
+    Default: ''
+
+  LambdaCodeS3Bucket:
+    Type: String
+    Description: S3 bucket containing the Lambda deployment package
+    MinLength: 3
+    MaxLength: 63
+
+  LambdaCodeS3Key:
+    Type: String
+    Description: S3 key for the Lambda deployment package (ZIP file)
+    MinLength: 1
+
+  MemorySize:
+    Type: Number
+    Description: Lambda function memory size in MB
+    Default: 512
+    MinValue: 128
+    MaxValue: 10240
+
+  TimeoutSeconds:
+    Type: Number
+    Description: Lambda function timeout in seconds
+    Default: 60
+    MinValue: 1
+    MaxValue: 900
+
+  DebounceSeconds:
+    Type: Number
+    Description: Time to wait after the last S3 event before triggering a merge
+    Default: 5
+    MinValue: 1
+    MaxValue: 300
+
+  EnableAlarms:
+    Type: String
+    Description: Whether to create CloudWatch alarms for merge failures
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+  AlarmThreshold:
+    Type: Number
+    Description: Number of failures that triggers the alarm
+    Default: 1
+    MinValue: 1
+
+  AlarmEvaluationPeriods:
+    Type: Number
+    Description: Number of periods to evaluate for the alarm
+    Default: 1
+    MinValue: 1
+
+  AlarmSnsTopicArn:
+    Type: String
+    Description: Optional SNS topic ARN for alarm notifications
+    Default: ''
+
+Conditions:
+  UseInputBucketAsOutput: !Equals [!Ref OutputBucketName, '']
+  CreateAlarms: !Equals [!Ref EnableAlarms, 'true']
+  HasAlarmTopic: !Not [!Equals [!Ref AlarmSnsTopicArn, '']]
+  CreateAlarmWithTopic: !And [!Condition CreateAlarms, !Condition HasAlarmTopic]
+
+
+Resources:
+  # DynamoDB Table for Debounce State
+  DebounceTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-debounce'
+      AttributeDefinitions:
+        - AttributeName: prefix
+          AttributeType: S
+      KeySchema:
+        - AttributeName: prefix
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Application
+          Value: OpenApiMerge
+
+  # IAM Role for Lambda Function
+  MergeFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::${InputBucketName}'
+                  - !Sub 'arn:aws:s3:::${InputBucketName}/*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !If
+                    - UseInputBucketAsOutput
+                    - !Sub 'arn:aws:s3:::${InputBucketName}'
+                    - !Sub 'arn:aws:s3:::${OutputBucketName}'
+                  - !If
+                    - UseInputBucketAsOutput
+                    - !Sub 'arn:aws:s3:::${InputBucketName}/*'
+                    - !Sub 'arn:aws:s3:::${OutputBucketName}/*'
+        - PolicyName: CloudWatchMetrics
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: '*'
+
+  # Lambda Function
+  MergeFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-merge'
+      Description: OpenAPI specification merge function
+      Runtime: dotnet8
+      Handler: Oproto.Lambda.OpenApi.Merge.Lambda::Oproto.Lambda.OpenApi.Merge.Lambda.Functions.MergeFunction_HandleMerge_Generated::HandleMerge
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+      MemorySize: !Ref MemorySize
+      Timeout: !Ref TimeoutSeconds
+      Role: !GetAtt MergeFunctionRole.Arn
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !If [UseInputBucketAsOutput, !Ref InputBucketName, !Ref OutputBucketName]
+      TracingConfig:
+        Mode: Active
+      Tags:
+        - Key: Application
+          Value: OpenApiMerge
+
+  # IAM Role for Step Functions State Machine
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-sfn-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                Resource: !GetAtt DebounceTable.Arn
+        - PolicyName: LambdaInvoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt MergeFunction.Arn
+        - PolicyName: XRayAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                Resource: '*'
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogDelivery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:DeleteLogDelivery
+                  - logs:ListLogDeliveries
+                  - logs:PutResourcePolicy
+                  - logs:DescribeResourcePolicies
+                  - logs:DescribeLogGroups
+                Resource: '*'
+
+
+  # Step Functions State Machine
+  DebounceStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub '${AWS::StackName}-debounce'
+      StateMachineType: STANDARD
+      RoleArn: !GetAtt StateMachineRole.Arn
+      TracingConfiguration:
+        Enabled: true
+      DefinitionSubstitutions:
+        DebounceTable: !Ref DebounceTable
+        MergeFunction: !GetAtt MergeFunction.Arn
+        DebounceSeconds: !Ref DebounceSeconds
+        OutputBucketResolved: !If [UseInputBucketAsOutput, !Ref InputBucketName, !Ref OutputBucketName]
+      DefinitionString: |
+        {
+          "Comment": "Debounce OpenAPI merge operations per API prefix with post-merge event checking",
+          "QueryLanguage": "JSONata",
+          "StartAt": "ExtractPrefix",
+          "States": {
+            "ExtractPrefix": {
+              "Type": "Pass",
+              "Output": {
+                "prefix": "{% $join($filter($split($states.input.detail.object.key, '/'), function($v, $i, $a) { $i < $count($a) - 1 }), '/') & '/' %}",
+                "bucket": "{% $states.input.detail.bucket.name %}",
+                "eventTime": "{% $states.input.time %}"
+              },
+              "Next": "CheckExistingExecution"
+            },
+            "CheckExistingExecution": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:getItem",
+              "Arguments": {
+                "TableName": "${DebounceTable}",
+                "Key": {
+                  "prefix": { "S": "{% $states.input.prefix %}" }
+                }
+              },
+              "Output": {
+                "prefix": "{% $states.input.prefix %}",
+                "bucket": "{% $states.input.bucket %}",
+                "eventTime": "{% $states.input.eventTime %}",
+                "exists": "{% $exists($states.result.Item) %}",
+                "existingExecutionId": "{% $states.result.Item.executionId.S %}"
+              },
+              "Next": "BranchOnExisting"
+            },
+            "BranchOnExisting": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Condition": "{% $states.input.exists = true %}",
+                  "Next": "UpdateEventTimestamp"
+                }
+              ],
+              "Default": "CreateExecution"
+            },
+            "UpdateEventTimestamp": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:updateItem",
+              "Arguments": {
+                "TableName": "${DebounceTable}",
+                "Key": {
+                  "prefix": { "S": "{% $states.input.prefix %}" }
+                },
+                "UpdateExpression": "SET lastEventTime = :ts",
+                "ExpressionAttributeValues": {
+                  ":ts": { "S": "{% $states.input.eventTime %}" }
+                }
+              },
+              "Comment": "Update timestamp and exit - existing execution will handle",
+              "End": true
+            },
+            "CreateExecution": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:putItem",
+              "Arguments": {
+                "TableName": "${DebounceTable}",
+                "Item": {
+                  "prefix": { "S": "{% $states.input.prefix %}" },
+                  "executionId": { "S": "{% $states.context.Execution.Id %}" },
+                  "lastEventTime": { "S": "{% $states.input.eventTime %}" },
+                  "ttl": { "N": "{% $string($floor(($toMillis($now()) / 1000) + 300)) %}" }
+                }
+              },
+              "Output": {
+                "prefix": "{% $states.input.prefix %}",
+                "bucket": "{% $states.input.bucket %}"
+              },
+              "Next": "WaitForDebounce"
+            },
+            "WaitForDebounce": {
+              "Type": "Wait",
+              "Seconds": ${DebounceSeconds},
+              "Next": "CheckForNewerEvents"
+            },
+            "CheckForNewerEvents": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:getItem",
+              "Arguments": {
+                "TableName": "${DebounceTable}",
+                "Key": {
+                  "prefix": { "S": "{% $states.input.prefix %}" }
+                }
+              },
+              "Output": {
+                "prefix": "{% $states.input.prefix %}",
+                "bucket": "{% $states.input.bucket %}",
+                "isOwner": "{% $states.result.Item.executionId.S = $states.context.Execution.Id %}",
+                "lastEventTime": "{% $states.result.Item.lastEventTime.S %}",
+                "mergeStartTime": "{% $states.result.Item.mergeStartTime.S %}"
+              },
+              "Next": "BranchOnOwnership"
+            },
+            "BranchOnOwnership": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Condition": "{% $states.input.isOwner = false %}",
+                  "Next": "AbandonExecution"
+                }
+              ],
+              "Default": "RecordMergeStart"
+            },
+            "AbandonExecution": {
+              "Type": "Succeed",
+              "Comment": "Another execution took over"
+            },
+            "RecordMergeStart": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:updateItem",
+              "Arguments": {
+                "TableName": "${DebounceTable}",
+                "Key": {
+                  "prefix": { "S": "{% $states.input.prefix %}" }
+                },
+                "UpdateExpression": "SET mergeStartTime = :ts",
+                "ExpressionAttributeValues": {
+                  ":ts": { "S": "{% $now() %}" }
+                }
+              },
+              "Output": {
+                "prefix": "{% $states.input.prefix %}",
+                "bucket": "{% $states.input.bucket %}",
+                "mergeStartTime": "{% $now() %}"
+              },
+              "Next": "InvokeMergeLambda"
+            },
+            "InvokeMergeLambda": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Arguments": {
+                "FunctionName": "${MergeFunction}",
+                "Payload": {
+                  "inputBucket": "{% $states.input.bucket %}",
+                  "prefix": "{% $states.input.prefix %}",
+                  "outputBucket": "${OutputBucketResolved}"
+                }
+              },
+              "Output": {
+                "prefix": "{% $states.input.prefix %}",
+                "bucket": "{% $states.input.bucket %}",
+                "mergeStartTime": "{% $states.input.mergeStartTime %}",
+                "mergeResult": "{% $states.result.Payload %}"
+              },
+              "Next": "CheckPostMergeEvents",
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "Next": "CheckPostMergeEvents",
+                  "Output": {
+                    "prefix": "{% $states.input.prefix %}",
+                    "bucket": "{% $states.input.bucket %}",
+                    "mergeStartTime": "{% $states.input.mergeStartTime %}",
+                    "mergeError": "{% $states.error %}"
+                  }
+                }
+              ]
+            },
+            "CheckPostMergeEvents": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:getItem",
+              "Arguments": {
+                "TableName": "${DebounceTable}",
+                "Key": {
+                  "prefix": { "S": "{% $states.input.prefix %}" }
+                }
+              },
+              "Output": {
+                "prefix": "{% $states.input.prefix %}",
+                "bucket": "{% $states.input.bucket %}",
+                "mergeStartTime": "{% $states.input.mergeStartTime %}",
+                "lastEventTime": "{% $states.result.Item.lastEventTime.S %}",
+                "hasNewerEvents": "{% $toMillis($states.result.Item.lastEventTime.S) > $toMillis($states.input.mergeStartTime) %}"
+              },
+              "Next": "BranchOnPostMergeEvents"
+            },
+            "BranchOnPostMergeEvents": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Condition": "{% $states.input.hasNewerEvents = true %}",
+                  "Next": "WaitForDebounce",
+                  "Comment": "Events arrived during merge - loop back"
+                }
+              ],
+              "Default": "CleanupExecution"
+            },
+            "CleanupExecution": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:deleteItem",
+              "Arguments": {
+                "TableName": "${DebounceTable}",
+                "Key": {
+                  "prefix": { "S": "{% $states.input.prefix %}" }
+                }
+              },
+              "End": true
+            }
+          }
+        }
+      Tags:
+        - Key: Application
+          Value: OpenApiMerge
+
+
+  # IAM Role for EventBridge to invoke Step Functions
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-eventbridge-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeStateMachine
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !Ref DebounceStateMachine
+
+  # EventBridge Rule for S3 Events (first prefix)
+  # Note: For multiple prefixes, you would need to create additional rules
+  # or use a Lambda function to filter events
+  S3EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${AWS::StackName}-s3-events'
+      Description: Triggers OpenAPI merge on S3 object changes
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+          - Object Deleted
+        detail:
+          bucket:
+            name:
+              - !Ref InputBucketName
+      Targets:
+        - Id: DebounceStateMachine
+          Arn: !Ref DebounceStateMachine
+          RoleArn: !GetAtt EventBridgeRole.Arn
+
+  # CloudWatch Alarm for Merge Failures (conditional)
+  MergeFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateAlarms
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-merge-failures'
+      AlarmDescription: Alarm when OpenAPI merge operations fail
+      Namespace: OpenApiMerge
+      MetricName: MergeFailures
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: !Ref AlarmEvaluationPeriods
+      Threshold: !Ref AlarmThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If
+        - HasAlarmTopic
+        - - !Ref AlarmSnsTopicArn
+        - !Ref AWS::NoValue
+
+Outputs:
+  MergeFunctionArn:
+    Description: ARN of the OpenAPI merge Lambda function
+    Value: !GetAtt MergeFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-MergeFunctionArn'
+
+  MergeFunctionName:
+    Description: Name of the OpenAPI merge Lambda function
+    Value: !Ref MergeFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-MergeFunctionName'
+
+  StateMachineArn:
+    Description: ARN of the debounce Step Functions state machine
+    Value: !Ref DebounceStateMachine
+    Export:
+      Name: !Sub '${AWS::StackName}-StateMachineArn'
+
+  StateMachineName:
+    Description: Name of the debounce Step Functions state machine
+    Value: !GetAtt DebounceStateMachine.Name
+    Export:
+      Name: !Sub '${AWS::StackName}-StateMachineName'
+
+  DebounceTableName:
+    Description: Name of the DynamoDB debounce table
+    Value: !Ref DebounceTable
+    Export:
+      Name: !Sub '${AWS::StackName}-DebounceTableName'
+
+  DebounceTableArn:
+    Description: ARN of the DynamoDB debounce table
+    Value: !GetAtt DebounceTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DebounceTableArn'
+
+  EventBridgeRuleArn:
+    Description: ARN of the EventBridge rule for S3 events
+    Value: !GetAtt S3EventRule.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-EventBridgeRuleArn'
+
+  OutputBucketName:
+    Description: Name of the output S3 bucket
+    Value: !If [UseInputBucketAsOutput, !Ref InputBucketName, !Ref OutputBucketName]
+    Export:
+      Name: !Sub '${AWS::StackName}-OutputBucketName'

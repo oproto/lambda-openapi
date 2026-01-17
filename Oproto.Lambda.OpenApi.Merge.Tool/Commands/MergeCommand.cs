@@ -2,6 +2,7 @@ namespace Oproto.Lambda.OpenApi.Merge.Tool.Commands;
 
 using System.CommandLine;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.OpenApi;
 using Microsoft.OpenApi.Extensions;
 using Microsoft.OpenApi.Models;
@@ -222,20 +223,41 @@ public class MergeCommand : Command
             throw new ConfigurationException("Failed to deserialize configuration file.");
         }
 
-        // Validate required fields
-        ValidateConfiguration(config);
-
         // Resolve relative paths based on config file location
         var configDir = configFile.DirectoryName ?? ".";
-        foreach (var source in config.Sources)
+
+        // Handle auto-discover mode
+        if (config.AutoDiscover)
         {
-            // First expand tilde paths
-            source.Path = PathExpander.ExpandPath(source.Path);
-            
-            // Then resolve relative paths
-            if (!Path.IsPathRooted(source.Path))
+            if (verbose)
             {
-                source.Path = Path.GetFullPath(Path.Combine(configDir, source.Path));
+                Console.WriteLine("  Auto-discover mode enabled, scanning for JSON files...");
+            }
+            
+            var discoveredSources = DiscoverSourceFiles(configDir, config, verbose);
+            config.Sources = discoveredSources;
+            
+            if (config.Sources.Count == 0)
+            {
+                throw new ConfigurationException("No source files found in auto-discover mode.");
+            }
+        }
+        else
+        {
+            // Validate required fields for explicit sources mode
+            ValidateConfiguration(config);
+
+            // Resolve relative paths for explicit sources
+            foreach (var source in config.Sources)
+            {
+                // First expand tilde paths
+                source.Path = PathExpander.ExpandPath(source.Path);
+                
+                // Then resolve relative paths
+                if (!Path.IsPathRooted(source.Path))
+                {
+                    source.Path = Path.GetFullPath(Path.Combine(configDir, source.Path));
+                }
             }
         }
 
@@ -254,9 +276,107 @@ public class MergeCommand : Command
             Console.WriteLine($"  Sources: {config.Sources.Count}");
             Console.WriteLine($"  Output: {config.Output}");
             Console.WriteLine($"  Schema Conflict Strategy: {config.SchemaConflict}");
+            Console.WriteLine($"  Auto-Discover: {config.AutoDiscover}");
+            if (config.ExcludePatterns.Count > 0)
+            {
+                Console.WriteLine($"  Exclude Patterns: {string.Join(", ", config.ExcludePatterns)}");
+            }
         }
 
         return config;
+    }
+
+    /// <summary>
+    /// Discovers source files in the specified directory based on configuration.
+    /// </summary>
+    private static List<SourceConfiguration> DiscoverSourceFiles(string directory, MergeConfiguration config, bool verbose)
+    {
+        var sources = new List<SourceConfiguration>();
+        var outputFileName = Path.GetFileName(config.Output);
+        
+        // Get all JSON files in the directory
+        var jsonFiles = Directory.GetFiles(directory, "*.json", SearchOption.TopDirectoryOnly);
+        
+        foreach (var filePath in jsonFiles)
+        {
+            var fileName = Path.GetFileName(filePath);
+            
+            // Skip config.json
+            if (fileName.Equals("config.json", StringComparison.OrdinalIgnoreCase))
+            {
+                if (verbose)
+                {
+                    Console.WriteLine($"    Skipping config file: {fileName}");
+                }
+                continue;
+            }
+            
+            // Skip output file
+            if (fileName.Equals(outputFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                if (verbose)
+                {
+                    Console.WriteLine($"    Skipping output file: {fileName}");
+                }
+                continue;
+            }
+            
+            // Check exclude patterns
+            if (MatchesExcludePattern(fileName, config.ExcludePatterns))
+            {
+                if (verbose)
+                {
+                    Console.WriteLine($"    Excluding (pattern match): {fileName}");
+                }
+                continue;
+            }
+            
+            if (verbose)
+            {
+                Console.WriteLine($"    Discovered: {fileName}");
+            }
+            
+            sources.Add(new SourceConfiguration
+            {
+                Path = filePath,
+                Name = Path.GetFileNameWithoutExtension(fileName)
+            });
+        }
+        
+        // Sort sources by name for deterministic ordering
+        sources.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal));
+        
+        return sources;
+    }
+
+    /// <summary>
+    /// Checks if a filename matches any of the exclude patterns.
+    /// Supports simple glob patterns: * (any characters), ? (single character)
+    /// </summary>
+    internal static bool MatchesExcludePattern(string fileName, List<string> excludePatterns)
+    {
+        foreach (var pattern in excludePatterns)
+        {
+            if (MatchesGlobPattern(fileName, pattern))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Matches a filename against a simple glob pattern.
+    /// Supports * (any characters) and ? (single character).
+    /// </summary>
+    internal static bool MatchesGlobPattern(string fileName, string pattern)
+    {
+        // Convert glob pattern to regex
+        var regexPattern = "^" + Regex.Escape(pattern)
+            .Replace("\\*", ".*")
+            .Replace("\\?", ".") + "$";
+        
+        return Regex.IsMatch(fileName, regexPattern, RegexOptions.IgnoreCase);
     }
 
     private static void ValidateConfiguration(MergeConfiguration config)

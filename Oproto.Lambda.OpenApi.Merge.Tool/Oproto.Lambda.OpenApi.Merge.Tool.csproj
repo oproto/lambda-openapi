@@ -20,6 +20,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Oproto.Lambda.OpenApi.Merge.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="..\PACKAGE_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 

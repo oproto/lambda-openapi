@@ -108,9 +108,11 @@ The configuration file provides full control over the merge process, including p
       "description": "string (optional)"
     }
   ],
+  "autoDiscover": "boolean (optional, default: false)",
+  "excludePatterns": ["string (optional)"],
   "sources": [
     {
-      "path": "string (required)",
+      "path": "string (required when autoDiscover is false)",
       "pathPrefix": "string (optional)",
       "operationIdPrefix": "string (optional)",
       "name": "string (optional)"
@@ -158,6 +160,37 @@ The configuration file provides full control over the merge process, including p
 }
 ```
 
+### Example Configuration with Auto-Discovery
+
+When you want to automatically merge all OpenAPI specs in a directory without listing them explicitly:
+
+```json
+{
+  "info": {
+    "title": "Platform API",
+    "version": "1.0.0",
+    "description": "Auto-discovered API specifications"
+  },
+  "servers": [
+    { "url": "https://api.example.com", "description": "Production" }
+  ],
+  "autoDiscover": true,
+  "excludePatterns": [
+    "*-draft.json",
+    "*.backup.json",
+    "test-*.json"
+  ],
+  "output": "./merged-openapi.json",
+  "schemaConflict": "rename"
+}
+```
+
+This configuration will:
+1. Find all `.json` files in the same directory as the config file
+2. Exclude any files matching the patterns in `excludePatterns`
+3. Automatically exclude the config file itself and the output file
+4. Merge all remaining files into `merged-openapi.json`
+
 ### Configuration Properties
 
 #### info (required)
@@ -184,6 +217,28 @@ Array of source specifications to merge:
 #### output (required)
 
 File path for the merged specification output. Supports tilde expansion (see below).
+
+#### autoDiscover (optional)
+
+When set to `true`, the merge tool automatically discovers all `.json` files in the same directory as the configuration file, instead of using the explicit `sources` list. Default is `false`.
+
+- Automatically excludes `config.json` (or whatever the config file is named)
+- Automatically excludes the output file
+- Respects `excludePatterns` for additional filtering
+
+#### excludePatterns (optional)
+
+Array of glob patterns for files to exclude from auto-discovery. Only used when `autoDiscover` is `true`.
+
+Supported glob patterns:
+- `*` matches any characters except path separators
+- `**` matches any characters including path separators
+- `?` matches a single character
+
+Examples:
+- `*-draft.json` - excludes files ending with `-draft.json`
+- `*.backup.json` - excludes files ending with `.backup.json`
+- `test-*.json` - excludes files starting with `test-`
 
 #### schemaConflict (optional)
 
