@@ -10,11 +10,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Amazon.Lambda.Core" Version="2.5.0" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.400" />
     <PackageReference Include="FsCheck" Version="2.16.6" />
     <PackageReference Include="FsCheck.Xunit" Version="2.16.6" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
-    <PackageReference Include="Microsoft.OpenApi" Version="1.6.22" />
-    <PackageReference Include="Microsoft.OpenApi.Readers" Version="1.6.22" />
+    <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="xunit" Version="2.4.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -27,14 +28,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Oproto.Lambda.OpenApi.Merge\Oproto.Lambda.OpenApi.Merge.csproj" />
-    <ProjectReference Include="..\Oproto.Lambda.OpenApi.Merge.Tool\Oproto.Lambda.OpenApi.Merge.Tool.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="TestData\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <ProjectReference Include="..\Oproto.Lambda.OpenApi.Merge.Lambda\Oproto.Lambda.OpenApi.Merge.Lambda.csproj" />
+    <ProjectReference Include="..\Oproto.Lambda.OpenApi.Merge.Cdk\Oproto.Lambda.OpenApi.Merge.Cdk.csproj" />
   </ItemGroup>
 
 </Project>

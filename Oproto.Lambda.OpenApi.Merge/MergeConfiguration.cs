@@ -38,6 +38,22 @@ public class MergeConfiguration
     [JsonPropertyName("schemaConflict")]
     [JsonConverter(typeof(SchemaConflictStrategyConverter))]
     public SchemaConflictStrategy SchemaConflict { get; set; } = SchemaConflictStrategy.Rename;
+
+    /// <summary>
+    /// Whether to auto-discover source files in the directory.
+    /// When true, ignores the sources list and discovers all .json files.
+    /// Default: false (use explicit sources list).
+    /// </summary>
+    [JsonPropertyName("autoDiscover")]
+    public bool AutoDiscover { get; set; } = false;
+
+    /// <summary>
+    /// Glob patterns for files to exclude from auto-discovery.
+    /// Only used when autoDiscover is true.
+    /// Always excludes the output file automatically.
+    /// </summary>
+    [JsonPropertyName("excludePatterns")]
+    public List<string> ExcludePatterns { get; set; } = new List<string>();
 }
 
 /// <summary>
