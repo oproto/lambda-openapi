@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
@@ -42,7 +42,8 @@
   <UsingTask TaskName="Oproto.Lambda.OpenApi.Build.ExtractOpenApiSpecTask"
              AssemblyFile="..\Oproto.Lambda.OpenApi.Build\bin\$(Configuration)\netstandard2.0\Oproto.Lambda.OpenApi.Build.dll"/>
 
-  <Target Name="GenerateOpenApi" AfterTargets="Build">
+  <!-- Only run OpenAPI generation during inner builds (when TargetFramework is set) -->
+  <Target Name="GenerateOpenApi" AfterTargets="Build" Condition="'$(TargetFramework)' != ''">
     <Message Text="Starting OpenAPI Generation" Importance="high"/>
     <ExtractOpenApiSpecTask
       AssemblyPath="$(TargetDir)$(TargetFileName)"

@@ -1762,7 +1762,8 @@ using Oproto.Lambda.OpenApi.Attributes;
                         a.AttributeClass?.Name is "OpenApiIgnore" or "OpenApiIgnoreAttribute"))
                     continue;
 
-                var propertySchema = CreateSchema(member.Type);
+                // Pass the member symbol to CreateSchema so nullable annotations can be detected
+                var propertySchema = CreateSchema(member.Type, member);
                 if (propertySchema != null)
                 {
                     // Get attributes from both the current property and its base if it's an override
