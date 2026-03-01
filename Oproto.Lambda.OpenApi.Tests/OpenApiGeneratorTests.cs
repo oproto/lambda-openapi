@@ -767,4 +767,300 @@ public class OpenApiGeneratorTests
         Assert.Null(schema.Properties["InvalidDictionary"].Example);
         Assert.Null(schema.Properties["InvalidDate"].Example);
     }
+
+    #region Dictionary Schema Tests - Task 4.1: Basic Dictionary Type Tests
+
+    [Fact]
+    public void CreateSchema_DictionaryStringString_ProducesCorrectSchema()
+    {
+        // Requirement 2.1: Dictionary<string, string> produces type: "object" with additionalProperties: { type: "string" }
+        var source = @"
+        public class TestClass
+        {
+            public Dictionary<string, string> StringDictionary { get; set; }
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        Assert.NotNull(schema.Properties["StringDictionary"]);
+        Assert.Equal("object", schema.Properties["StringDictionary"].Type);
+        Assert.NotNull(schema.Properties["StringDictionary"].AdditionalProperties);
+        Assert.Equal("string", schema.Properties["StringDictionary"].AdditionalProperties.Type);
+    }
+
+    [Fact]
+    public void CreateSchema_DictionaryStringInt_ProducesIntegerAdditionalProperties()
+    {
+        // Requirement 2.2: Dictionary<string, int> produces additionalProperties: { type: "integer" }
+        var source = @"
+        public class TestClass
+        {
+            public Dictionary<string, int> IntDictionary { get; set; }
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        Assert.NotNull(schema.Properties["IntDictionary"]);
+        Assert.Equal("object", schema.Properties["IntDictionary"].Type);
+        Assert.NotNull(schema.Properties["IntDictionary"].AdditionalProperties);
+        Assert.Equal("integer", schema.Properties["IntDictionary"].AdditionalProperties.Type);
+    }
+
+    [Fact]
+    public void CreateSchema_DictionaryStringBool_ProducesBooleanAdditionalProperties()
+    {
+        // Requirement 2.3: Dictionary<string, bool> produces additionalProperties: { type: "boolean" }
+        var source = @"
+        public class TestClass
+        {
+            public Dictionary<string, bool> BoolDictionary { get; set; }
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        Assert.NotNull(schema.Properties["BoolDictionary"]);
+        Assert.Equal("object", schema.Properties["BoolDictionary"].Type);
+        Assert.NotNull(schema.Properties["BoolDictionary"].AdditionalProperties);
+        Assert.Equal("boolean", schema.Properties["BoolDictionary"].AdditionalProperties.Type);
+    }
+
+    [Fact]
+    public void CreateSchema_DictionaryStringDecimal_ProducesNumberAdditionalProperties()
+    {
+        // Requirement 2.4: Dictionary<string, decimal> produces additionalProperties: { type: "number" }
+        var source = @"
+        public class TestClass
+        {
+            public Dictionary<string, decimal> DecimalDictionary { get; set; }
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        Assert.NotNull(schema.Properties["DecimalDictionary"]);
+        Assert.Equal("object", schema.Properties["DecimalDictionary"].Type);
+        Assert.NotNull(schema.Properties["DecimalDictionary"].AdditionalProperties);
+        Assert.Equal("number", schema.Properties["DecimalDictionary"].AdditionalProperties.Type);
+    }
+
+    [Fact]
+    public void CreateSchema_DictionaryStringDateTime_ProducesStringWithDateTimeFormat()
+    {
+        // Requirement 2.5: Dictionary<string, DateTime> produces additionalProperties: { type: "string", format: "date-time" }
+        var source = @"
+        public class TestClass
+        {
+            public Dictionary<string, DateTime> DateTimeDictionary { get; set; }
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        Assert.NotNull(schema.Properties["DateTimeDictionary"]);
+        Assert.Equal("object", schema.Properties["DateTimeDictionary"].Type);
+        Assert.NotNull(schema.Properties["DateTimeDictionary"].AdditionalProperties);
+        Assert.Equal("string", schema.Properties["DateTimeDictionary"].AdditionalProperties.Type);
+        Assert.Equal("date-time", schema.Properties["DateTimeDictionary"].AdditionalProperties.Format);
+    }
+
+    #endregion
+
+    #region Dictionary Schema Tests - Task 4.2: Complex Value Type Tests
+
+    [Fact]
+    public void CreateSchema_DictionaryStringComplexType_ProducesRefInAdditionalProperties()
+    {
+        // Requirement 3.1: Dictionary with complex value type produces $ref in additionalProperties
+        var source = @"
+        public class Address
+        {
+            public string Street { get; set; }
+            public string City { get; set; }
+        }
+        public class TestClass
+        {
+            public Dictionary<string, Address> AddressDictionary { get; set; }
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        Assert.NotNull(schema.Properties["AddressDictionary"]);
+        Assert.Equal("object", schema.Properties["AddressDictionary"].Type);
+        Assert.NotNull(schema.Properties["AddressDictionary"].AdditionalProperties);
+        // Complex types should have nested object schema with properties
+        Assert.Equal("object", schema.Properties["AddressDictionary"].AdditionalProperties.Type);
+        Assert.NotNull(schema.Properties["AddressDictionary"].AdditionalProperties.Properties);
+        Assert.Contains("Street", schema.Properties["AddressDictionary"].AdditionalProperties.Properties.Keys);
+        Assert.Contains("City", schema.Properties["AddressDictionary"].AdditionalProperties.Properties.Keys);
+    }
+
+    [Fact]
+    public void CreateSchema_DictionaryStringListString_ProducesNestedArraySchema()
+    {
+        // Requirement 3.2: Dictionary<string, List<string>> produces nested array schema
+        var source = @"
+        public class TestClass
+        {
+            public Dictionary<string, List<string>> ListDictionary { get; set; }
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        Assert.NotNull(schema.Properties["ListDictionary"]);
+        Assert.Equal("object", schema.Properties["ListDictionary"].Type);
+        Assert.NotNull(schema.Properties["ListDictionary"].AdditionalProperties);
+        Assert.Equal("array", schema.Properties["ListDictionary"].AdditionalProperties.Type);
+        Assert.NotNull(schema.Properties["ListDictionary"].AdditionalProperties.Items);
+        Assert.Equal("string", schema.Properties["ListDictionary"].AdditionalProperties.Items.Type);
+    }
+
+    [Fact]
+    public void CreateSchema_DictionaryStringDictionaryStringInt_ProducesNestedDictionarySchema()
+    {
+        // Requirement 3.3: Dictionary<string, Dictionary<string, int>> produces nested dictionary schema
+        var source = @"
+        public class TestClass
+        {
+            public Dictionary<string, Dictionary<string, int>> NestedDictionary { get; set; }
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        Assert.NotNull(schema.Properties["NestedDictionary"]);
+        Assert.Equal("object", schema.Properties["NestedDictionary"].Type);
+        Assert.NotNull(schema.Properties["NestedDictionary"].AdditionalProperties);
+        Assert.Equal("object", schema.Properties["NestedDictionary"].AdditionalProperties.Type);
+        Assert.NotNull(schema.Properties["NestedDictionary"].AdditionalProperties.AdditionalProperties);
+        Assert.Equal("integer", schema.Properties["NestedDictionary"].AdditionalProperties.AdditionalProperties.Type);
+    }
+
+    #endregion
+
+    #region Dictionary Schema Tests - Task 4.3: Nullable Dictionary Tests
+
+    [Fact]
+    public void CreateSchema_NullableDictionaryProperty_ProducesNullableTrue()
+    {
+        // Requirement 4.1: Nullable dictionary property produces nullable: true
+        var source = @"
+        #nullable enable
+        public class TestClass
+        {
+            public Dictionary<string, string>? NullableDictionary { get; set; }
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        Assert.NotNull(schema.Properties["NullableDictionary"]);
+        Assert.Equal("object", schema.Properties["NullableDictionary"].Type);
+        Assert.True(schema.Properties["NullableDictionary"].Nullable);
+        Assert.NotNull(schema.Properties["NullableDictionary"].AdditionalProperties);
+        Assert.Equal("string", schema.Properties["NullableDictionary"].AdditionalProperties.Type);
+    }
+
+    [Fact]
+    public void CreateSchema_DictionaryWithNullableAnnotation_ProducesNullableTrue()
+    {
+        // Requirement 4.2: Dictionary property with nullable annotation produces nullable: true
+        var source = @"
+        #nullable enable
+        public class TestClass
+        {
+            public Dictionary<string, int>? NullableIntDictionary { get; set; }
+            public Dictionary<string, string> NonNullableDictionary { get; set; } = new();
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        // Nullable dictionary should have nullable: true
+        Assert.NotNull(schema.Properties["NullableIntDictionary"]);
+        Assert.True(schema.Properties["NullableIntDictionary"].Nullable);
+
+        // Non-nullable dictionary should not have nullable: true
+        Assert.NotNull(schema.Properties["NonNullableDictionary"]);
+        Assert.False(schema.Properties["NonNullableDictionary"].Nullable);
+    }
+
+    #endregion
+
+    #region Dictionary Schema Tests - Task 4.4: Dictionary Interface Tests
+
+    [Fact]
+    public void CreateSchema_IDictionaryStringT_IsDetectedAsDictionary()
+    {
+        // Requirement 1.2: IDictionary<string, T> is detected as dictionary
+        var source = @"
+        public class TestClass
+        {
+            public IDictionary<string, int> InterfaceDictionary { get; set; }
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        Assert.NotNull(schema.Properties["InterfaceDictionary"]);
+        Assert.Equal("object", schema.Properties["InterfaceDictionary"].Type);
+        Assert.NotNull(schema.Properties["InterfaceDictionary"].AdditionalProperties);
+        Assert.Equal("integer", schema.Properties["InterfaceDictionary"].AdditionalProperties.Type);
+    }
+
+    [Fact]
+    public void CreateSchema_IReadOnlyDictionaryStringT_IsDetectedAsDictionary()
+    {
+        // Requirement 1.3: IReadOnlyDictionary<string, T> is detected as dictionary
+        var source = @"
+        public class TestClass
+        {
+            public IReadOnlyDictionary<string, string> ReadOnlyDictionary { get; set; }
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        Assert.NotNull(schema.Properties["ReadOnlyDictionary"]);
+        Assert.Equal("object", schema.Properties["ReadOnlyDictionary"].Type);
+        Assert.NotNull(schema.Properties["ReadOnlyDictionary"].AdditionalProperties);
+        Assert.Equal("string", schema.Properties["ReadOnlyDictionary"].AdditionalProperties.Type);
+    }
+
+    #endregion
+
+    #region Dictionary Schema Tests - Task 4.5: Attribute Support Tests
+
+    [Fact]
+    public void CreateSchema_DictionaryWithDescriptionAttribute_AppliesDescription()
+    {
+        // Requirement 6.1: [OpenApiSchema(Description = "...")] applies to dictionary schema
+        var source = @"
+        using Oproto.Lambda.OpenApi.Attributes;
+        public class TestClass
+        {
+            [OpenApiSchema(Description = ""A mapping of user IDs to their names"")]
+            public Dictionary<string, string> UserNames { get; set; }
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        Assert.NotNull(schema.Properties["UserNames"]);
+        Assert.Equal("object", schema.Properties["UserNames"].Type);
+        Assert.Equal("A mapping of user IDs to their names", schema.Properties["UserNames"].Description);
+        Assert.NotNull(schema.Properties["UserNames"].AdditionalProperties);
+    }
+
+    [Fact]
+    public void CreateSchema_DictionaryWithExampleAttribute_AppliesExample()
+    {
+        // Requirement 6.2: [OpenApiSchema(Example = "...")] applies to dictionary schema
+        var source = @"
+        using Oproto.Lambda.OpenApi.Attributes;
+        public class TestClass
+        {
+            [OpenApiSchema(Example = ""{\""key1\"": \""value1\"", \""key2\"": \""value2\""}"")]
+            public Dictionary<string, string> ExampleDictionary { get; set; }
+        }";
+
+        var schema = GenerateSchemaFromSource(source, "TestClass");
+
+        Assert.NotNull(schema.Properties["ExampleDictionary"]);
+        Assert.Equal("object", schema.Properties["ExampleDictionary"].Type);
+        Assert.NotNull(schema.Properties["ExampleDictionary"].Example);
+    }
+
+    #endregion
 }

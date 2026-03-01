@@ -120,7 +120,7 @@ public partial class OpenApiSpecGenerator
     }
 
     /// <summary>
-    ///     Identifies simple/primitive types including string, numeric types, and DateTime.
+    ///     Identifies simple/primitive types including string, numeric types, DateTime, DateOnly, and TimeOnly.
     /// </summary>
     /// <param name="typeSymbol">The type symbol to check</param>
     /// <returns>True if the type is a simple type</returns>
@@ -128,7 +128,7 @@ public partial class OpenApiSpecGenerator
     ///     Simple types include:
     ///     - Enums (treated as strings with enum values in OpenAPI)
     ///     - Primitive types (bool, string, int, etc.)
-    ///     - DateTime
+    ///     - DateTime, DateOnly, TimeOnly
     ///     This method must be called before IsCollectionType to ensure proper type handling.
     /// </remarks>
     private bool IsSimpleType(ITypeSymbol typeSymbol)
@@ -148,12 +148,27 @@ public partial class OpenApiSpecGenerator
                 SpecialType.System_Single or
                 SpecialType.System_Double or
                 SpecialType.System_Decimal => true,
-            _ => typeSymbol.Name == "DateTime" || typeSymbol.ToString() == "System.DateTime"
+            _ => IsDateTimeType(typeSymbol)
         };
     }
 
     /// <summary>
-    ///     Creates an OpenAPI schema for simple types including enums, DateTime, and primitive types.
+    ///     Checks if the type is a date/time type (DateTime, DateOnly, or TimeOnly).
+    /// </summary>
+    /// <param name="typeSymbol">The type symbol to check</param>
+    /// <returns>True if the type is a date/time type</returns>
+    private bool IsDateTimeType(ITypeSymbol typeSymbol)
+    {
+        var typeName = typeSymbol.Name;
+        var fullName = typeSymbol.ToString();
+        
+        return typeName == "DateTime" || fullName == "System.DateTime" ||
+               typeName == "DateOnly" || fullName == "System.DateOnly" ||
+               typeName == "TimeOnly" || fullName == "System.TimeOnly";
+    }
+
+    /// <summary>
+    ///     Creates an OpenAPI schema for simple types including enums, DateTime, DateOnly, TimeOnly, and primitive types.
     ///     For complex/reference types, see CreateComplexTypeSchema.
     /// </summary>
     /// <param name="typeSymbol">The type symbol to create a schema for</param>
@@ -172,6 +187,8 @@ public partial class OpenApiSpecGenerator
     ///     For simple types, the schema will be:
     ///     - Enums: string type with enum values
     ///     - DateTime: string type with format: date-time
+    ///     - DateOnly: string type with format: date
+    ///     - TimeOnly: string type with format: time
     ///     - Primitives: mapped to appropriate OpenAPI types (integer, number, string, boolean)
     /// </remarks>
     private OpenApiSchema CreateSimpleTypeSchema(ITypeSymbol typeSymbol, ISymbol memberSymbol = null)
@@ -199,6 +216,22 @@ public partial class OpenApiSpecGenerator
         {
             schema.Type = "string";
             schema.Format = "date-time";
+            return schema;
+        }
+
+        // Check for DateOnly
+        if (typeSymbol.Name == "DateOnly" || typeSymbol.ToString() == "System.DateOnly")
+        {
+            schema.Type = "string";
+            schema.Format = "date";
+            return schema;
+        }
+
+        // Check for TimeOnly
+        if (typeSymbol.Name == "TimeOnly" || typeSymbol.ToString() == "System.TimeOnly")
+        {
+            schema.Type = "string";
+            schema.Format = "time";
             return schema;
         }
 
@@ -252,6 +285,7 @@ public partial class OpenApiSpecGenerator
     ///     - IEnumerable{T} implementations
     ///     - Direct generic collection types
     ///     Uses MetadataName for reliable type detection in the compilation context.
+    ///     Note: Dictionary types are explicitly excluded as they should be handled separately.
     /// </remarks>
     private bool IsCollectionType(ITypeSymbol typeSymbol, out ITypeSymbol elementType)
     {
@@ -267,6 +301,14 @@ public partial class OpenApiSpecGenerator
         // Handle generic collections
         if (typeSymbol is INamedTypeSymbol namedType && namedType.IsGenericType)
         {
+            // Exclude dictionary types - they implement IEnumerable but should be handled separately
+            if (namedType.MetadataName == "Dictionary`2" ||
+                namedType.MetadataName == "IDictionary`2" ||
+                namedType.MetadataName == "IReadOnlyDictionary`2" ||
+                namedType.AllInterfaces.Any(i => i.MetadataName == "IDictionary`2" || i.MetadataName == "IReadOnlyDictionary`2"))
+            {
+                return false;
+            }
 
             // Direct type checks first
             // Todo: is there a better way to do this?
@@ -384,6 +426,55 @@ public partial class OpenApiSpecGenerator
                 Pattern = "^[0-9A-HJKMNP-TV-Z]{26}$" // ULID pattern (base32)
             };
             return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    ///     Determines if a type is a dictionary type (Dictionary, IDictionary, IReadOnlyDictionary).
+    /// </summary>
+    /// <param name="typeSymbol">The type to check</param>
+    /// <param name="keyType">Output parameter for the dictionary's key type</param>
+    /// <param name="valueType">Output parameter for the dictionary's value type</param>
+    /// <returns>True if the type is a dictionary type</returns>
+    /// <remarks>
+    ///     Handles:
+    ///     - Direct Dictionary{K,V} types
+    ///     - IDictionary{K,V} interface types
+    ///     - IReadOnlyDictionary{K,V} interface types
+    ///     - Custom types implementing IDictionary{K,V}
+    ///     Uses MetadataName for reliable type detection in the compilation context.
+    /// </remarks>
+    private bool IsDictionaryType(ITypeSymbol typeSymbol, out ITypeSymbol keyType, out ITypeSymbol valueType)
+    {
+        keyType = null;
+        valueType = null;
+
+        if (typeSymbol is not INamedTypeSymbol namedType || !namedType.IsGenericType)
+            return false;
+
+        // Direct type checks for Dictionary<K,V>, IDictionary<K,V>, IReadOnlyDictionary<K,V>
+        var isDictionary = namedType.MetadataName == "Dictionary`2" ||
+                           namedType.MetadataName == "IDictionary`2" ||
+                           namedType.MetadataName == "IReadOnlyDictionary`2";
+
+        if (isDictionary)
+        {
+            keyType = namedType.TypeArguments[0];
+            valueType = namedType.TypeArguments[1];
+            return true;
+        }
+
+        // Interface check for custom types implementing IDictionary<K,V>
+        foreach (var iface in namedType.AllInterfaces)
+        {
+            if (iface.MetadataName == "IDictionary`2" || iface.MetadataName == "IReadOnlyDictionary`2")
+            {
+                keyType = iface.TypeArguments[0];
+                valueType = iface.TypeArguments[1];
+                return true;
+            }
         }
 
         return false;

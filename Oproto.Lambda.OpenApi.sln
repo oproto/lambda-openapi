@@ -17,6 +17,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi.Merge
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi.Merge.Tests", "Oproto.Lambda.OpenApi.Merge.Tests\Oproto.Lambda.OpenApi.Merge.Tests.csproj", "{B63B2424-1484-422D-8B23-CE73F867583C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi.Merge.Lambda", "Oproto.Lambda.OpenApi.Merge.Lambda\Oproto.Lambda.OpenApi.Merge.Lambda.csproj", "{7C44294E-E0E1-4983-A046-BF8977FAFB3A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi.Merge.Lambda.Tests", "Oproto.Lambda.OpenApi.Merge.Lambda.Tests\Oproto.Lambda.OpenApi.Merge.Lambda.Tests.csproj", "{635C8E7F-2D69-4D40-81D7-9A0564745F6C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oproto.Lambda.OpenApi.Merge.Cdk", "Oproto.Lambda.OpenApi.Merge.Cdk\Oproto.Lambda.OpenApi.Merge.Cdk.csproj", "{4E8C0F0B-9FFB-47A9-BFDD-20CADAE39F18}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,5 +61,17 @@ Global
 		{B63B2424-1484-422D-8B23-CE73F867583C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B63B2424-1484-422D-8B23-CE73F867583C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B63B2424-1484-422D-8B23-CE73F867583C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C44294E-E0E1-4983-A046-BF8977FAFB3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C44294E-E0E1-4983-A046-BF8977FAFB3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C44294E-E0E1-4983-A046-BF8977FAFB3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C44294E-E0E1-4983-A046-BF8977FAFB3A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{635C8E7F-2D69-4D40-81D7-9A0564745F6C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{635C8E7F-2D69-4D40-81D7-9A0564745F6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{635C8E7F-2D69-4D40-81D7-9A0564745F6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{635C8E7F-2D69-4D40-81D7-9A0564745F6C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4E8C0F0B-9FFB-47A9-BFDD-20CADAE39F18}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E8C0F0B-9FFB-47A9-BFDD-20CADAE39F18}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E8C0F0B-9FFB-47A9-BFDD-20CADAE39F18}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E8C0F0B-9FFB-47A9-BFDD-20CADAE39F18}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -20,6 +20,9 @@ public class MergeConfigurationTests
         Assert.Empty(config.Sources);
         Assert.Equal("merged-openapi.json", config.Output);
         Assert.Equal(SchemaConflictStrategy.Rename, config.SchemaConflict);
+        Assert.False(config.AutoDiscover);
+        Assert.NotNull(config.ExcludePatterns);
+        Assert.Empty(config.ExcludePatterns);
     }
 
     [Fact]
@@ -199,5 +202,126 @@ public class MergeConfigurationTests
 
         Assert.Equal(string.Empty, server.Url);
         Assert.Null(server.Description);
+    }
+
+    [Fact]
+    public void MergeConfiguration_Deserialize_AutoDiscoverTrue()
+    {
+        var json = """
+        {
+            "info": {
+                "title": "Auto API",
+                "version": "1.0.0"
+            },
+            "autoDiscover": true,
+            "excludePatterns": ["*-draft.json", "*.backup.json"],
+            "output": "merged.json"
+        }
+        """;
+
+        var config = JsonSerializer.Deserialize<MergeConfiguration>(json);
+
+        Assert.NotNull(config);
+        Assert.True(config.AutoDiscover);
+        Assert.Equal(2, config.ExcludePatterns.Count);
+        Assert.Contains("*-draft.json", config.ExcludePatterns);
+        Assert.Contains("*.backup.json", config.ExcludePatterns);
+    }
+
+    [Fact]
+    public void MergeConfiguration_Deserialize_AutoDiscoverFalse_WithExplicitSources()
+    {
+        var json = """
+        {
+            "info": {
+                "title": "Explicit API",
+                "version": "1.0.0"
+            },
+            "autoDiscover": false,
+            "sources": [
+                { "path": "./api1.json" },
+                { "path": "./api2.json" }
+            ],
+            "output": "merged.json"
+        }
+        """;
+
+        var config = JsonSerializer.Deserialize<MergeConfiguration>(json);
+
+        Assert.NotNull(config);
+        Assert.False(config.AutoDiscover);
+        Assert.Equal(2, config.Sources.Count);
+        Assert.Empty(config.ExcludePatterns);
+    }
+
+    [Fact]
+    public void MergeConfiguration_Deserialize_MissingAutoDiscover_DefaultsFalse()
+    {
+        var json = """
+        {
+            "info": {
+                "title": "Default API",
+                "version": "1.0.0"
+            },
+            "sources": [
+                { "path": "./api.json" }
+            ]
+        }
+        """;
+
+        var config = JsonSerializer.Deserialize<MergeConfiguration>(json);
+
+        Assert.NotNull(config);
+        Assert.False(config.AutoDiscover);
+        Assert.Empty(config.ExcludePatterns);
+    }
+
+    [Fact]
+    public void MergeConfiguration_Serialize_AutoDiscoverAndExcludePatterns()
+    {
+        var config = new MergeConfiguration
+        {
+            Info = new MergeInfoConfiguration
+            {
+                Title = "Test API",
+                Version = "1.0.0"
+            },
+            AutoDiscover = true,
+            ExcludePatterns = new List<string> { "*.draft.json", "temp-*.json" },
+            Output = "output.json"
+        };
+
+        var json = JsonSerializer.Serialize(config);
+
+        Assert.Contains("\"autoDiscover\":true", json);
+        Assert.Contains("\"excludePatterns\"", json);
+        Assert.Contains("*.draft.json", json);
+        Assert.Contains("temp-*.json", json);
+    }
+
+    [Fact]
+    public void MergeConfiguration_RoundTrip_WithAutoDiscover()
+    {
+        var config = new MergeConfiguration
+        {
+            Info = new MergeInfoConfiguration
+            {
+                Title = "Round Trip API",
+                Version = "2.0.0"
+            },
+            AutoDiscover = true,
+            ExcludePatterns = new List<string> { "*-backup.json", "draft/*.json" },
+            Output = "merged.json",
+            SchemaConflict = SchemaConflictStrategy.Rename
+        };
+
+        var json = JsonSerializer.Serialize(config);
+        var deserialized = JsonSerializer.Deserialize<MergeConfiguration>(json);
+
+        Assert.NotNull(deserialized);
+        Assert.Equal(config.AutoDiscover, deserialized.AutoDiscover);
+        Assert.Equal(config.ExcludePatterns.Count, deserialized.ExcludePatterns.Count);
+        Assert.Equal(config.ExcludePatterns[0], deserialized.ExcludePatterns[0]);
+        Assert.Equal(config.ExcludePatterns[1], deserialized.ExcludePatterns[1]);
     }
 }

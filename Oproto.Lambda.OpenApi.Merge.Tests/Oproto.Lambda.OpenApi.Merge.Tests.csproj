@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>12</LangVersion>
@@ -28,6 +28,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Oproto.Lambda.OpenApi.Merge\Oproto.Lambda.OpenApi.Merge.csproj" />
+    <ProjectReference Include="..\Oproto.Lambda.OpenApi.Merge.Tool\Oproto.Lambda.OpenApi.Merge.Tool.csproj" />
   </ItemGroup>
 
   <ItemGroup>

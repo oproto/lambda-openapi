@@ -108,9 +108,11 @@ The configuration file provides full control over the merge process, including p
       "description": "string (optional)"
     }
   ],
+  "autoDiscover": "boolean (optional, default: false)",
+  "excludePatterns": ["string (optional)"],
   "sources": [
     {
-      "path": "string (required)",
+      "path": "string (required when autoDiscover is false)",
       "pathPrefix": "string (optional)",
       "operationIdPrefix": "string (optional)",
       "name": "string (optional)"
@@ -158,6 +160,37 @@ The configuration file provides full control over the merge process, including p
 }
 ```
 
+### Example Configuration with Auto-Discovery
+
+When you want to automatically merge all OpenAPI specs in a directory without listing them explicitly:
+
+```json
+{
+  "info": {
+    "title": "Platform API",
+    "version": "1.0.0",
+    "description": "Auto-discovered API specifications"
+  },
+  "servers": [
+    { "url": "https://api.example.com", "description": "Production" }
+  ],
+  "autoDiscover": true,
+  "excludePatterns": [
+    "*-draft.json",
+    "*.backup.json",
+    "test-*.json"
+  ],
+  "output": "./merged-openapi.json",
+  "schemaConflict": "rename"
+}
+```
+
+This configuration will:
+1. Find all `.json` files in the same directory as the config file
+2. Exclude any files matching the patterns in `excludePatterns`
+3. Automatically exclude the config file itself and the output file
+4. Merge all remaining files into `merged-openapi.json`
+
 ### Configuration Properties
 
 #### info (required)
@@ -176,18 +209,92 @@ Array of server definitions for the merged specification. Source servers are ign
 
 Array of source specifications to merge:
 
-- `path` (required): File path to the OpenAPI specification (relative to config file or absolute)
+- `path` (required): File path to the OpenAPI specification (relative to config file or absolute). Supports tilde expansion (see below).
 - `pathPrefix` (optional): Prefix to prepend to all paths from this source (e.g., `/users`)
 - `operationIdPrefix` (optional): Prefix to prepend to all operationIds from this source (e.g., `users_`)
 - `name` (optional): Friendly name for this source, used in warnings and errors (defaults to filename)
 
 #### output (required)
 
-File path for the merged specification output.
+File path for the merged specification output. Supports tilde expansion (see below).
+
+#### autoDiscover (optional)
+
+When set to `true`, the merge tool automatically discovers all `.json` files in the same directory as the configuration file, instead of using the explicit `sources` list. Default is `false`.
+
+- Automatically excludes `config.json` (or whatever the config file is named)
+- Automatically excludes the output file
+- Respects `excludePatterns` for additional filtering
+
+#### excludePatterns (optional)
+
+Array of glob patterns for files to exclude from auto-discovery. Only used when `autoDiscover` is `true`.
+
+Supported glob patterns:
+- `*` matches any characters except path separators
+- `**` matches any characters including path separators
+- `?` matches a single character
+
+Examples:
+- `*-draft.json` - excludes files ending with `-draft.json`
+- `*.backup.json` - excludes files ending with `.backup.json`
+- `test-*.json` - excludes files starting with `test-`
 
 #### schemaConflict (optional)
 
 Strategy for handling schema naming conflicts. Default is `rename`.
+
+## Tilde Path Expansion
+
+The merge tool supports Unix-style tilde (`~`) expansion in file paths, making it easier to reference files relative to your home directory.
+
+### Supported Syntax
+
+| Syntax | Expansion | Platform |
+|--------|-----------|----------|
+| `~/path/to/file` | Current user's home directory | All platforms |
+| `~username/path/to/file` | Specified user's home directory | Unix/macOS only |
+
+### Examples
+
+**Configuration file with tilde paths:**
+
+```json
+{
+  "info": {
+    "title": "My API",
+    "version": "1.0.0"
+  },
+  "sources": [
+    { "path": "~/projects/service-a/openapi.json" },
+    { "path": "~/projects/service-b/openapi.json" }
+  ],
+  "output": "~/api-docs/merged.json"
+}
+```
+
+**Command line with tilde paths:**
+
+```bash
+dotnet openapi-merge merge --title "My API" --version "1.0.0" \
+  -o ~/output/merged.json \
+  ~/services/api1.json ~/services/api2.json
+```
+
+### Platform Notes
+
+- **macOS/Linux**: Both `~/` and `~username/` syntax are supported
+- **Windows**: Only `~/` syntax is supported (expands to `%USERPROFILE%`)
+- If tilde expansion fails (e.g., user not found), a clear error message is displayed identifying the problematic path
+
+### Error Handling
+
+If a tilde path cannot be expanded, the tool reports an error with both the original path and the expansion failure reason:
+
+```
+Error: Source file not found: ~/invalid/path.json
+  Cannot expand path '~/invalid/path.json': Unable to determine home directory.
+```
 
 ## Schema Conflict Strategies
 

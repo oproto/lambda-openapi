@@ -248,22 +248,55 @@ public class ExtractOpenApiSpecTask : Task
             var assemblyDir = Path.GetDirectoryName(AssemblyPath);
             Log.LogMessage(MessageImportance.High, $"Trying reflection extraction from: {assemblyDir}");
 
-            // Collect all DLLs in the output directory for the resolver
-            var assemblyPaths = new List<string> { AssemblyPath };
+            // Collect assemblies for the resolver, avoiding duplicates that cause
+            // "assembly has already been loaded" errors in MetadataLoadContext.
+            // This can happen when:
+            // 1. Same assembly exists in multiple directories (output + runtime)
+            // 2. Different SDK version (e.g., .NET 10) builds a different target (e.g., .NET 8)
+            var assemblyPathsByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            
+            // Add the target assembly first
+            assemblyPathsByName[Path.GetFileName(AssemblyPath)] = AssemblyPath;
+            
+            // Add assemblies from output directory - these should match the target framework
             if (assemblyDir != null)
             {
-                assemblyPaths.AddRange(Directory.GetFiles(assemblyDir, "*.dll"));
+                foreach (var dll in Directory.GetFiles(assemblyDir, "*.dll"))
+                {
+                    var fileName = Path.GetFileName(dll);
+                    if (!assemblyPathsByName.ContainsKey(fileName))
+                    {
+                        assemblyPathsByName[fileName] = dll;
+                    }
+                }
             }
 
-            // Add core library path
-            var coreAssemblyPath = typeof(object).Assembly.Location;
-            var coreDir = Path.GetDirectoryName(coreAssemblyPath);
-            if (coreDir != null)
+            // Try to find the target framework's reference assemblies from the SDK packs
+            // This is more reliable than using the running runtime when SDK version differs from target
+            var referenceAssembliesAdded = TryAddReferenceAssemblies(assemblyPathsByName);
+            
+            // Only fall back to running runtime assemblies if we couldn't find reference assemblies
+            // and the output directory doesn't have core assemblies (e.g., System.Private.CoreLib)
+            if (!referenceAssembliesAdded && !assemblyPathsByName.ContainsKey("System.Private.CoreLib.dll"))
             {
-                assemblyPaths.AddRange(Directory.GetFiles(coreDir, "*.dll"));
+                var coreAssemblyPath = typeof(object).Assembly.Location;
+                var coreDir = Path.GetDirectoryName(coreAssemblyPath);
+                if (coreDir != null)
+                {
+                    Log.LogMessage(MessageImportance.Low, 
+                        $"Adding runtime assemblies from: {coreDir}");
+                    foreach (var dll in Directory.GetFiles(coreDir, "*.dll"))
+                    {
+                        var fileName = Path.GetFileName(dll);
+                        if (!assemblyPathsByName.ContainsKey(fileName))
+                        {
+                            assemblyPathsByName[fileName] = dll;
+                        }
+                    }
+                }
             }
 
-            var resolver = new PathAssemblyResolver(assemblyPaths.Distinct());
+            var resolver = new PathAssemblyResolver(assemblyPathsByName.Values);
             using var mlc = new MetadataLoadContext(resolver);
 
             var assembly = mlc.LoadFromAssemblyPath(AssemblyPath);
@@ -299,6 +332,79 @@ public class ExtractOpenApiSpecTask : Task
             Log.LogMessage(MessageImportance.High,
                 $"Stack trace: {ex.StackTrace}");
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Attempts to add reference assemblies from the .NET SDK packs directory.
+    /// This ensures we use assemblies matching the target framework, not the running SDK.
+    /// </summary>
+    private bool TryAddReferenceAssemblies(Dictionary<string, string> assemblyPathsByName)
+    {
+        try
+        {
+            // Try to determine target framework from the assembly path (e.g., bin/Debug/net8.0/)
+            var assemblyDir = Path.GetDirectoryName(AssemblyPath);
+            if (assemblyDir == null) return false;
+
+            var tfmDir = Path.GetFileName(assemblyDir); // e.g., "net8.0"
+            if (string.IsNullOrEmpty(tfmDir) || !tfmDir.StartsWith("net")) return false;
+
+            // Look for reference assemblies in the SDK packs directory
+            // Typical path: ~/.dotnet/packs/Microsoft.NETCore.App.Ref/{version}/ref/{tfm}/
+            var dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+            if (string.IsNullOrEmpty(dotnetRoot))
+            {
+                // Try common locations
+                var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                var possibleRoots = new[]
+                {
+                    Path.Combine(home, ".dotnet"),
+                    "/usr/share/dotnet",
+                    "/usr/local/share/dotnet",
+                    @"C:\Program Files\dotnet"
+                };
+                dotnetRoot = possibleRoots.FirstOrDefault(Directory.Exists);
+            }
+
+            if (string.IsNullOrEmpty(dotnetRoot) || !Directory.Exists(dotnetRoot)) return false;
+
+            var packsDir = Path.Combine(dotnetRoot, "packs", "Microsoft.NETCore.App.Ref");
+            if (!Directory.Exists(packsDir)) return false;
+
+            // Find the appropriate version directory
+            var versionDirs = Directory.GetDirectories(packsDir)
+                .Select(d => new { Path = d, Name = Path.GetFileName(d) })
+                .Where(d => d.Name.StartsWith(tfmDir.Replace("net", ""))) // e.g., "8.0" for "net8.0"
+                .OrderByDescending(d => d.Name)
+                .ToList();
+
+            foreach (var versionDir in versionDirs)
+            {
+                var refDir = Path.Combine(versionDir.Path, "ref", tfmDir);
+                if (Directory.Exists(refDir))
+                {
+                    Log.LogMessage(MessageImportance.Low, 
+                        $"Adding reference assemblies from: {refDir}");
+                    foreach (var dll in Directory.GetFiles(refDir, "*.dll"))
+                    {
+                        var fileName = Path.GetFileName(dll);
+                        if (!assemblyPathsByName.ContainsKey(fileName))
+                        {
+                            assemblyPathsByName[fileName] = dll;
+                        }
+                    }
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Log.LogMessage(MessageImportance.Low, 
+                $"Could not locate reference assemblies: {ex.Message}");
+            return false;
         }
     }
 }

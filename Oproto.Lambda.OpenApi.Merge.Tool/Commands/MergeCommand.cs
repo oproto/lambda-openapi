@@ -2,11 +2,14 @@ namespace Oproto.Lambda.OpenApi.Merge.Tool.Commands;
 
 using System.CommandLine;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.OpenApi;
 using Microsoft.OpenApi.Extensions;
 using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Readers;
 using Oproto.Lambda.OpenApi.Merge;
+
+// PathExpander is used for tilde path expansion
 
 /// <summary>
 /// Command for merging multiple OpenAPI specifications.
@@ -43,6 +46,10 @@ public class MergeCommand : Command
             new[] { "-v", "--verbose" },
             "Show detailed progress and warnings");
 
+        var forceOption = new Option<bool>(
+            new[] { "-f", "--force" },
+            "Force write output even if unchanged");
+
         // Positional argument for direct file list
         var filesArgument = new Argument<FileInfo[]>(
             "files",
@@ -57,10 +64,11 @@ public class MergeCommand : Command
         AddOption(versionOption);
         AddOption(schemaConflictOption);
         AddOption(verboseOption);
+        AddOption(forceOption);
         AddArgument(filesArgument);
 
         this.SetHandler(ExecuteAsync, configOption, outputOption, titleOption,
-            versionOption, schemaConflictOption, verboseOption, filesArgument);
+            versionOption, schemaConflictOption, verboseOption, forceOption, filesArgument);
     }
 
     private async Task<int> ExecuteAsync(
@@ -70,6 +78,7 @@ public class MergeCommand : Command
         string? version,
         SchemaConflictStrategy schemaConflict,
         bool verbose,
+        bool force,
         FileInfo[] files)
     {
         try
@@ -147,7 +156,7 @@ public class MergeCommand : Command
                 Console.WriteLine($"Writing merged specification to: {outputPath}");
             }
 
-            await WriteOpenApiDocumentAsync(result.Document, outputPath, verbose);
+            var wasWritten = await WriteOpenApiDocumentAsync(result.Document, outputPath, verbose, force);
 
             if (verbose)
             {
@@ -155,7 +164,14 @@ public class MergeCommand : Command
             }
             else
             {
-                Console.WriteLine($"Merged {documents.Count} specifications into {outputPath}");
+                if (wasWritten)
+                {
+                    Console.WriteLine($"Merged {documents.Count} specifications into {outputPath}");
+                }
+                else
+                {
+                    Console.WriteLine($"Output unchanged, skipped writing: {outputPath}");
+                }
             }
 
             return 0;
@@ -207,19 +223,47 @@ public class MergeCommand : Command
             throw new ConfigurationException("Failed to deserialize configuration file.");
         }
 
-        // Validate required fields
-        ValidateConfiguration(config);
-
         // Resolve relative paths based on config file location
         var configDir = configFile.DirectoryName ?? ".";
-        foreach (var source in config.Sources)
+
+        // Handle auto-discover mode
+        if (config.AutoDiscover)
         {
-            if (!Path.IsPathRooted(source.Path))
+            if (verbose)
             {
-                source.Path = Path.GetFullPath(Path.Combine(configDir, source.Path));
+                Console.WriteLine("  Auto-discover mode enabled, scanning for JSON files...");
+            }
+            
+            var discoveredSources = DiscoverSourceFiles(configDir, config, verbose);
+            config.Sources = discoveredSources;
+            
+            if (config.Sources.Count == 0)
+            {
+                throw new ConfigurationException("No source files found in auto-discover mode.");
+            }
+        }
+        else
+        {
+            // Validate required fields for explicit sources mode
+            ValidateConfiguration(config);
+
+            // Resolve relative paths for explicit sources
+            foreach (var source in config.Sources)
+            {
+                // First expand tilde paths
+                source.Path = PathExpander.ExpandPath(source.Path);
+                
+                // Then resolve relative paths
+                if (!Path.IsPathRooted(source.Path))
+                {
+                    source.Path = Path.GetFullPath(Path.Combine(configDir, source.Path));
+                }
             }
         }
 
+        // Expand tilde in output path
+        config.Output = PathExpander.ExpandPath(config.Output);
+        
         if (!Path.IsPathRooted(config.Output))
         {
             config.Output = Path.GetFullPath(Path.Combine(configDir, config.Output));
@@ -232,9 +276,107 @@ public class MergeCommand : Command
             Console.WriteLine($"  Sources: {config.Sources.Count}");
             Console.WriteLine($"  Output: {config.Output}");
             Console.WriteLine($"  Schema Conflict Strategy: {config.SchemaConflict}");
+            Console.WriteLine($"  Auto-Discover: {config.AutoDiscover}");
+            if (config.ExcludePatterns.Count > 0)
+            {
+                Console.WriteLine($"  Exclude Patterns: {string.Join(", ", config.ExcludePatterns)}");
+            }
         }
 
         return config;
+    }
+
+    /// <summary>
+    /// Discovers source files in the specified directory based on configuration.
+    /// </summary>
+    private static List<SourceConfiguration> DiscoverSourceFiles(string directory, MergeConfiguration config, bool verbose)
+    {
+        var sources = new List<SourceConfiguration>();
+        var outputFileName = Path.GetFileName(config.Output);
+        
+        // Get all JSON files in the directory
+        var jsonFiles = Directory.GetFiles(directory, "*.json", SearchOption.TopDirectoryOnly);
+        
+        foreach (var filePath in jsonFiles)
+        {
+            var fileName = Path.GetFileName(filePath);
+            
+            // Skip config.json
+            if (fileName.Equals("config.json", StringComparison.OrdinalIgnoreCase))
+            {
+                if (verbose)
+                {
+                    Console.WriteLine($"    Skipping config file: {fileName}");
+                }
+                continue;
+            }
+            
+            // Skip output file
+            if (fileName.Equals(outputFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                if (verbose)
+                {
+                    Console.WriteLine($"    Skipping output file: {fileName}");
+                }
+                continue;
+            }
+            
+            // Check exclude patterns
+            if (MatchesExcludePattern(fileName, config.ExcludePatterns))
+            {
+                if (verbose)
+                {
+                    Console.WriteLine($"    Excluding (pattern match): {fileName}");
+                }
+                continue;
+            }
+            
+            if (verbose)
+            {
+                Console.WriteLine($"    Discovered: {fileName}");
+            }
+            
+            sources.Add(new SourceConfiguration
+            {
+                Path = filePath,
+                Name = Path.GetFileNameWithoutExtension(fileName)
+            });
+        }
+        
+        // Sort sources by name for deterministic ordering
+        sources.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal));
+        
+        return sources;
+    }
+
+    /// <summary>
+    /// Checks if a filename matches any of the exclude patterns.
+    /// Supports simple glob patterns: * (any characters), ? (single character)
+    /// </summary>
+    internal static bool MatchesExcludePattern(string fileName, List<string> excludePatterns)
+    {
+        foreach (var pattern in excludePatterns)
+        {
+            if (MatchesGlobPattern(fileName, pattern))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Matches a filename against a simple glob pattern.
+    /// Supports * (any characters) and ? (single character).
+    /// </summary>
+    internal static bool MatchesGlobPattern(string fileName, string pattern)
+    {
+        // Convert glob pattern to regex
+        var regexPattern = "^" + Regex.Escape(pattern)
+            .Replace("\\*", ".*")
+            .Replace("\\?", ".") + "$";
+        
+        return Regex.IsMatch(fileName, regexPattern, RegexOptions.IgnoreCase);
     }
 
     private static void ValidateConfiguration(MergeConfiguration config)
@@ -310,17 +452,26 @@ public class MergeCommand : Command
 
     private static async Task<OpenApiDocument> LoadOpenApiDocumentAsync(string path, bool verbose)
     {
-        if (!File.Exists(path))
+        // Expand tilde in path
+        var expandedPath = PathExpander.ExpandPath(path);
+        
+        if (!File.Exists(expandedPath))
         {
-            throw new FileNotFoundException($"Source file not found: {path}");
+            var errorMessage = $"Source file not found: {path}";
+            if (expandedPath != path)
+                errorMessage += $" (expanded to: {expandedPath})";
+            throw new FileNotFoundException(errorMessage);
         }
 
         if (verbose)
         {
-            Console.WriteLine($"  Loading: {path}");
+            if (expandedPath != path)
+                Console.WriteLine($"  Loading: {path} (expanded to: {expandedPath})");
+            else
+                Console.WriteLine($"  Loading: {path}");
         }
 
-        using var stream = File.OpenRead(path);
+        using var stream = File.OpenRead(expandedPath);
         var reader = new OpenApiStreamReader();
         var result = await reader.ReadAsync(stream);
 
@@ -334,8 +485,11 @@ public class MergeCommand : Command
         return result.OpenApiDocument;
     }
 
-    private static async Task WriteOpenApiDocumentAsync(OpenApiDocument document, string outputPath, bool verbose)
+    private static async Task<bool> WriteOpenApiDocumentAsync(OpenApiDocument document, string outputPath, bool verbose, bool force)
     {
+        // Expand tilde in output path
+        var expandedPath = PathExpander.ExpandPath(outputPath);
+        
         // Validate the merged document before writing
         var errors = document.Validate(Microsoft.OpenApi.Validations.ValidationRuleSet.GetDefaultRuleSet());
         var errorList = errors.ToList();
@@ -354,13 +508,40 @@ public class MergeCommand : Command
         }
 
         // Ensure output directory exists
-        var outputDir = Path.GetDirectoryName(outputPath);
+        var outputDir = Path.GetDirectoryName(expandedPath);
         if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
         {
             Directory.CreateDirectory(outputDir);
         }
 
         var json = document.SerializeAsJson(OpenApiSpecVersion.OpenApi3_0);
-        await File.WriteAllTextAsync(outputPath, json);
+        
+        // Check if file exists and content matches (skip-unchanged feature)
+        if (!force && File.Exists(expandedPath))
+        {
+            try
+            {
+                var existingContent = await File.ReadAllTextAsync(expandedPath);
+                if (existingContent == json)
+                {
+                    if (verbose)
+                    {
+                        Console.WriteLine($"Output unchanged, skipping write: {outputPath}");
+                    }
+                    return false; // Indicates file was not written
+                }
+            }
+            catch (IOException ex)
+            {
+                // Log warning and proceed with write if we can't read existing file
+                if (verbose)
+                {
+                    Console.Error.WriteLine($"Warning: Could not read existing file for comparison: {ex.Message}");
+                }
+            }
+        }
+
+        await File.WriteAllTextAsync(expandedPath, json);
+        return true; // Indicates file was written
     }
 }
