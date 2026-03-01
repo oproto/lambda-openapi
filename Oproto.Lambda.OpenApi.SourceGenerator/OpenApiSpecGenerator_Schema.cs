@@ -45,6 +45,10 @@ public partial class OpenApiSpecGenerator
         if (TryCreateCollectionSchema(typeSymbol, memberSymbol, out var collectionSchema))
             return collectionSchema;
 
+        // Check for dictionary types (after collections, before complex types)
+        if (TryCreateDictionarySchema(typeSymbol, memberSymbol, out var dictionarySchema))
+            return dictionarySchema;
+
         // If we've already processed this type and it's a complex type, return a reference
         if (!_processedTypes.TryGetValue(typeSymbol, out var count))
         {
@@ -233,5 +237,51 @@ public partial class OpenApiSpecGenerator
         }
 
         return false;
+    }
+
+    /// <summary>
+    ///     Attempts to create a schema for dictionary types.
+    /// </summary>
+    /// <param name="typeSymbol">The type symbol to check for dictionary</param>
+    /// <param name="memberSymbol">The member symbol for additional metadata</param>
+    /// <param name="schema">The output schema if the type is a dictionary</param>
+    /// <returns>True if a dictionary schema was created, false otherwise</returns>
+    /// <remarks>
+    ///     Creates an object schema with additionalProperties for the value type.
+    ///     Handles Dictionary{K,V}, IDictionary{K,V}, IReadOnlyDictionary{K,V}, and custom implementations.
+    ///     Example schema for Dictionary{string, int}:
+    ///     {
+    ///         "type": "object",
+    ///         "additionalProperties": { "type": "integer" }
+    ///     }
+    ///     Example schema for Dictionary{string, ComplexType}:
+    ///     {
+    ///         "type": "object",
+    ///         "additionalProperties": { "$ref": "#/components/schemas/ComplexType" }
+    ///     }
+    ///     Any [OpenApiSchema] attributes on the dictionary property are applied to the dictionary schema.
+    /// </remarks>
+    private bool TryCreateDictionarySchema(ITypeSymbol typeSymbol, ISymbol memberSymbol, out OpenApiSchema schema)
+    {
+        schema = null;
+
+        if (!IsDictionaryType(typeSymbol, out var keyType, out var valueType))
+            return false;
+
+        // Create the schema for the value type (recursively handles nested dictionaries, collections, complex types)
+        var valueSchema = CreateSchema(valueType);
+
+        // Create the dictionary schema with type: "object" and additionalProperties
+        schema = new OpenApiSchema
+        {
+            Type = "object",
+            AdditionalProperties = valueSchema
+        };
+
+        // Apply [OpenApiSchema] attributes (Description, Example) to the dictionary schema
+        if (memberSymbol != null)
+            ApplySchemaAttributes(schema, memberSymbol);
+
+        return true;
     }
 }

@@ -285,6 +285,7 @@ public partial class OpenApiSpecGenerator
     ///     - IEnumerable{T} implementations
     ///     - Direct generic collection types
     ///     Uses MetadataName for reliable type detection in the compilation context.
+    ///     Note: Dictionary types are explicitly excluded as they should be handled separately.
     /// </remarks>
     private bool IsCollectionType(ITypeSymbol typeSymbol, out ITypeSymbol elementType)
     {
@@ -300,6 +301,14 @@ public partial class OpenApiSpecGenerator
         // Handle generic collections
         if (typeSymbol is INamedTypeSymbol namedType && namedType.IsGenericType)
         {
+            // Exclude dictionary types - they implement IEnumerable but should be handled separately
+            if (namedType.MetadataName == "Dictionary`2" ||
+                namedType.MetadataName == "IDictionary`2" ||
+                namedType.MetadataName == "IReadOnlyDictionary`2" ||
+                namedType.AllInterfaces.Any(i => i.MetadataName == "IDictionary`2" || i.MetadataName == "IReadOnlyDictionary`2"))
+            {
+                return false;
+            }
 
             // Direct type checks first
             // Todo: is there a better way to do this?
@@ -417,6 +426,55 @@ public partial class OpenApiSpecGenerator
                 Pattern = "^[0-9A-HJKMNP-TV-Z]{26}$" // ULID pattern (base32)
             };
             return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    ///     Determines if a type is a dictionary type (Dictionary, IDictionary, IReadOnlyDictionary).
+    /// </summary>
+    /// <param name="typeSymbol">The type to check</param>
+    /// <param name="keyType">Output parameter for the dictionary's key type</param>
+    /// <param name="valueType">Output parameter for the dictionary's value type</param>
+    /// <returns>True if the type is a dictionary type</returns>
+    /// <remarks>
+    ///     Handles:
+    ///     - Direct Dictionary{K,V} types
+    ///     - IDictionary{K,V} interface types
+    ///     - IReadOnlyDictionary{K,V} interface types
+    ///     - Custom types implementing IDictionary{K,V}
+    ///     Uses MetadataName for reliable type detection in the compilation context.
+    /// </remarks>
+    private bool IsDictionaryType(ITypeSymbol typeSymbol, out ITypeSymbol keyType, out ITypeSymbol valueType)
+    {
+        keyType = null;
+        valueType = null;
+
+        if (typeSymbol is not INamedTypeSymbol namedType || !namedType.IsGenericType)
+            return false;
+
+        // Direct type checks for Dictionary<K,V>, IDictionary<K,V>, IReadOnlyDictionary<K,V>
+        var isDictionary = namedType.MetadataName == "Dictionary`2" ||
+                           namedType.MetadataName == "IDictionary`2" ||
+                           namedType.MetadataName == "IReadOnlyDictionary`2";
+
+        if (isDictionary)
+        {
+            keyType = namedType.TypeArguments[0];
+            valueType = namedType.TypeArguments[1];
+            return true;
+        }
+
+        // Interface check for custom types implementing IDictionary<K,V>
+        foreach (var iface in namedType.AllInterfaces)
+        {
+            if (iface.MetadataName == "IDictionary`2" || iface.MetadataName == "IReadOnlyDictionary`2")
+            {
+                keyType = iface.TypeArguments[0];
+                valueType = iface.TypeArguments[1];
+                return true;
+            }
         }
 
         return false;
